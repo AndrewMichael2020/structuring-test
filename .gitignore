@@ -27,5 +27,5 @@ artifacts/
 # Ignore extracted assets
 artifacts/
 
-# Ignore OCR outputs
-*.json
+# Local environment file (store secrets like OPENAI_API_KEY here)
+.env

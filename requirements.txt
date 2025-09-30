@@ -1,16 +1,19 @@
-# Core dependencies
+# Core
 requests
 beautifulsoup4
 pandas
 
-# Optional OCR support
+# OCR support
 playwright
 pillow
 pytesseract
 
-# Optional LLM cleanup (can be left unconfigured if not used)
+# LLM-based enrichment
 openai
 
 # pip install -r requirements.txt
 
+# export OPENAI_API_KEY=".."
+# source .venv/bin/activate
 
+# python main.py "..."
