@@ -7,12 +7,13 @@ Orchestrates full pipeline:
 """
 
 import sys
-import sys
 import time
+import argparse
+from typing import List
 from extract_captions import extract_and_save
 from image_ocr import enrich_json_with_conditions
 from pathlib import Path
-from accident_info import extract_accident_info
+from accident_info import extract_accident_info, batch_extract_accident_info
 from urllib.parse import urlparse
 
 def ts_print(*args, **kwargs):
@@ -20,20 +21,36 @@ def ts_print(*args, **kwargs):
     print(f"[{t}]", *args, **kwargs)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        ts_print(f"Usage: python {sys.argv[0]} <URL> [--mode=all|text-only|ocr-only]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Extract accident info from news URLs')
+    parser.add_argument('urls', nargs='*', help='One or more URLs to process')
+    parser.add_argument('--mode', choices=['all', 'text-only', 'ocr-only'], default=None,
+                        help='Run mode: all, text-only, or ocr-only (interactive if omitted)')
+    parser.add_argument('--urls-file', type=str, default=None,
+                        help='Path to a file with URLs (one per line) to run in batched LLM mode')
+    parser.add_argument('--batch-size', type=int, default=3, help='Number of URLs per LLM batch')
+    args = parser.parse_args()
 
-    url = sys.argv[1]
+    urls: List[str] = []
+    if args.urls_file:
+        p = Path(args.urls_file)
+        if not p.exists():
+            ts_print(f'URLs file not found: {args.urls_file}')
+            sys.exit(1)
+        with open(p, 'r', encoding='utf-8') as f:
+            for line in f:
+                s = line.strip()
+                if s:
+                    urls.append(s)
+    elif not args.urls:
+        # interactive single URL prompt
+        u = input('Enter a URL: ').strip()
+        urls = [u]
+    else:
+        urls = args.urls
 
-    # parse optional mode
-    mode = None
-    for a in sys.argv[2:]:
-        if a.startswith('--mode='):
-            mode = a.split('=', 1)[1]
-
+    mode = args.mode
     if mode not in ('all', 'text-only', 'ocr-only'):
-        # interactive prompt
+        # interactive selection
         ts_print("Select run mode:")
         ts_print("  1) all (extract images, OCR, and article text)")
         ts_print("  2) text-only (skip OCR & image downloads, only extract article text)")
@@ -48,42 +65,44 @@ if __name__ == "__main__":
 
     ts_print(f"[INFO] Running mode: {mode}")
 
-    # Mode behavior:
-    # - all: run extraction (with downloads) + OCR + article text
-    # - text-only: skip image downloads and OCR; only extract article text and accident info
-    # - ocr-only: skip extraction/downloads; assume captions.json already exists and run OCR only
+    # If urls-file was provided, run batch LLM extraction (text-only behavior for batched LLM)
+    if args.urls_file:
+        ts_print(f'[INFO] Running batched extraction for {len(urls)} URLs with batch size {args.batch_size}')
+        written = batch_extract_accident_info(urls, batch_size=args.batch_size)
+        ts_print(f'[INFO] Wrote {len(written)} artifacts')
+        for p in written[:10]:
+            ts_print(' -', p)
+        sys.exit(0)
 
-    json_path = None
-    run_dir = None
+    # Otherwise run per-URL behavior
+    for url in urls:
+        json_path = None
+        run_dir = None
+        if mode == 'ocr-only':
+            base = Path('artifacts') / Path(urlparse(url).netloc.replace('www.', ''))
+            if not base.exists():
+                ts_print(f"No artifacts found for {url}; nothing to OCR")
+                continue
+            runs = sorted([p for p in base.iterdir() if p.is_dir()])
+            if not runs:
+                ts_print(f"No runs found in {base}; nothing to OCR")
+                continue
+            latest = runs[-1]
+            json_path = str(latest / 'captions.json')
+            run_dir = str(latest)
+            ts_print(f"Using existing captions.json: {json_path}")
+            enrich_json_with_conditions(json_path)
 
-    if mode == 'ocr-only':
-        # find most recent captions.json under artifacts/<domain>/
-        base = Path('artifacts') / Path(urlparse(url).netloc.replace('www.', ''))
-        if not base.exists():
-            ts_print(f"No artifacts found for {url}; nothing to OCR")
-            sys.exit(1)
-        # pick latest folder
-        runs = sorted([p for p in base.iterdir() if p.is_dir()])
-        if not runs:
-            ts_print(f"No runs found in {base}; nothing to OCR")
-            sys.exit(1)
-        latest = runs[-1]
-        json_path = str(latest / 'captions.json')
-        run_dir = str(latest)
-        ts_print(f"Using existing captions.json: {json_path}")
-        enrich_json_with_conditions(json_path)
+        elif mode == 'text-only':
+            json_path = extract_and_save(url, run_ocr=False, download_images=False)
+            run_dir = str(Path(json_path).parent)
+            ts_print(f"[INFO] Extracting accident info for {url}")
+            extract_accident_info(url, out_dir=run_dir)
 
-    elif mode == 'text-only':
-        # only extract article text and accident info (skip downloads and OCR)
-        json_path = extract_and_save(url, run_ocr=False, download_images=False)
-        run_dir = str(Path(json_path).parent)
-        ts_print(f"[INFO] Extracting accident info for {url}")
-        extract_accident_info(url, out_dir=run_dir)
-
-    else:  # all
-        json_path = extract_and_save(url, run_ocr=True, download_images=True)
-        ts_print(f"[INFO] Extracting HTML captions from {url}")
-        enrich_json_with_conditions(json_path)
-        run_dir = str(Path(json_path).parent)
-        ts_print(f"[INFO] Extracting accident info for {url}")
-        extract_accident_info(url, out_dir=run_dir)
+        else:  # all
+            json_path = extract_and_save(url, run_ocr=True, download_images=True)
+            ts_print(f"[INFO] Extracting HTML captions from {url}")
+            enrich_json_with_conditions(json_path)
+            run_dir = str(Path(json_path).parent)
+            ts_print(f"[INFO] Extracting accident info for {url}")
+            extract_accident_info(url, out_dir=run_dir)
