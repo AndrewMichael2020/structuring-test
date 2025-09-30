@@ -23,3 +23,9 @@ artifacts/
 
 # Jupyter checkpoints (if you use notebooks in Codespaces)
 .ipynb_checkpoints/
+
+# Ignore extracted assets
+artifacts/
+
+# Ignore OCR outputs
+*.json
