@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Playwright browser binaries
+playwright/.local-browsers/
+
+# Artifacts (captions + images)
+artifacts/
+
+# Logs / temp
+*.log
+*.tmp
+.DS_Store
+
+# Jupyter checkpoints (if you use notebooks in Codespaces)
+.ipynb_checkpoints/
