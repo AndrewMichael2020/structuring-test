@@ -17,9 +17,53 @@ Output stored into entry["ocr"] as:
 import os
 import json
 import base64
+import re
+import time
+from PIL import Image
+import openai as _openai
 from openai import OpenAI
+from openai_call_manager import can_make_call, record_call, remaining
 
-client = OpenAI()
+# Initialize OpenAI client only if API key is present to avoid hard failure on import
+_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if _OPENAI_API_KEY:
+    try:
+        client = OpenAI()
+        OPENAI_AVAILABLE = True
+    except Exception:
+        client = None
+        OPENAI_AVAILABLE = False
+
+
+        # Helper for OpenAI calls with retry/backoff
+        def _chat_with_retries(payload_messages, model_name="gpt-4o-mini", max_retries=6):
+            backoff = 0.5
+            for attempt in range(max_retries):
+                try:
+                    return client.chat.completions.create(
+                        model=model_name,
+                        messages=payload_messages,
+                        temperature=0
+                    )
+                except Exception as e:
+                    # handle OpenAI rate limits gracefully
+                    try:
+                        if hasattr(_openai, 'RateLimitError') and isinstance(e, _openai.RateLimitError):
+                            wait = backoff * (2 ** attempt)
+                            time.sleep(wait)
+                            continue
+                    except Exception:
+                        pass
+                    # sometimes the library raises a generic Exception containing '429' or 'rate_limit'
+                    msg = str(e).lower()
+                    if 'rate limit' in msg or '429' in msg or 'tokens per min' in msg:
+                        wait = backoff * (2 ** attempt)
+                        time.sleep(wait)
+                        continue
+                    raise
+else:
+    client = None
+    OPENAI_AVAILABLE = False
 
 
 # -------------------- Image Encoding --------------------
@@ -94,21 +138,55 @@ _SCHEMA_PROMPT = (
 
 def analyze_conditions(image_path: str) -> dict:
     """Run GPT-4o-mini vision, return parsed dict with strict schema. If parsing fails, fallback to minimal dict."""
+    # If OpenAI isn't available, return a minimal fallback structure using only OCR (no GPT analysis)
     data_url = _encode_image_as_data_url(image_path)
+    if not OPENAI_AVAILABLE or client is None:
+        # Basic fallback: return a minimal structure with low confidence using only image filename
+        return {
+            "summary": os.path.basename(image_path),
+            "signals": {
+                "avalanche_signs": {"crown_line": None, "debris": None, "slide_paths": None, "size_est": None, "slab_type": None},
+                "snow_surface": {"full_coverage": None, "cornice": None, "wind_loading": None, "melt_freeze_crust": None},
+                "terrain": {"slope_angle_class": None, "aspect": "unknown", "terrain_trap": [], "elevation_band": None},
+                "glacier": {"crevasses": None, "seracs": None, "snow_bridge_likely": None},
+                "weather": {"sky": None, "visibility": None, "precip": None, "wind": None},
+                "human_activity": {"tracks": None, "people_present": None, "rope_or_harness": None, "helmet": None},
+                "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None}
+            },
+            "confidence": 0.0
+        }
 
-    resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": _SCHEMA_PROMPT},
-                    {"type": "image_url", "image_url": {"url": data_url}}
-                ]
-            }
-        ],
-        temperature=0
-    )
+    # Full OpenAI path. Respect per-run cap.
+    if not can_make_call():
+        print(f"[OCR] OpenAI call cap reached (remaining=0). Skipping GPT analysis for {image_path}")
+        return {
+            "summary": os.path.basename(image_path),
+            "signals": {
+                "avalanche_signs": {"crown_line": None, "debris": None, "slide_paths": None, "size_est": None, "slab_type": None},
+                "snow_surface": {"full_coverage": None, "cornice": None, "wind_loading": None, "melt_freeze_crust": None},
+                "terrain": {"slope_angle_class": None, "aspect": "unknown", "terrain_trap": [], "elevation_band": None},
+                "glacier": {"crevasses": None, "seracs": None, "snow_bridge_likely": None},
+                "weather": {"sky": None, "visibility": None, "precip": None, "wind": None},
+                "human_activity": {"tracks": None, "people_present": None, "rope_or_harness": None, "helmet": None},
+                "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None}
+            },
+            "confidence": 0.0
+        }
+
+    resp = _chat_with_retries([
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": _SCHEMA_PROMPT},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]
+        }
+    ])
+    # Record that we made one OpenAI call
+    try:
+        record_call(1)
+    except Exception:
+        pass
     txt = resp.choices[0].message.content.strip()
 
     # Parse strict JSON; fallback to baseline if needed
@@ -125,16 +203,12 @@ def analyze_conditions(image_path: str) -> dict:
         fallback_prompt = (
             "Return ONLY a very short phrase of visible conditions (<= 12 words)."
         )
-        resp2 = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": fallback_prompt},
-                    {"type": "image_url", "image_url": {"url": data_url}}
-                ]}
-            ],
-            temperature=0
-        )
+        resp2 = _chat_with_retries([
+            {"role": "user", "content": [
+                {"type": "text", "text": fallback_prompt},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]}
+        ])
         return {
             "summary": resp2.choices[0].message.content.strip(),
             "signals": {
@@ -177,24 +251,40 @@ def judge_correlation(caption: str, ocr_obj: dict) -> bool:
     Returns True if caption and OCR signals correlate semantically.
     Uses GPT-4o-mini for cheap semantic similarity judgment on caption vs signals text.
     """
+    # If OpenAI client isn't configured, use a simple heuristic fallback to avoid crashing.
     if not caption or not ocr_obj:
         return False
+
     signals_text = f"{ocr_obj.get('summary','')}. {_signals_to_text(ocr_obj.get('signals', {}))}"
 
-    judge_prompt = (
-        f"Caption: \"{caption}\"\n"
-        f"Signals: \"{signals_text}\"\n\n"
-        "Answer YES if the signals plausibly match or are consistent with the caption. "
-        "Answer NO if they conflict or describe unrelated content. Respond with only YES or NO."
-    )
+    try:
+        if OPENAI_AVAILABLE and client is not None:
+            judge_prompt = (
+                f"Caption: \"{caption}\"\n"
+                f"Signals: \"{signals_text}\"\n\n"
+                "Answer YES if the signals plausibly match or are consistent with the caption. "
+                "Answer NO if they conflict or describe unrelated content. Respond with only YES or NO."
+            )
 
-    resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": [{"type": "text", "text": judge_prompt}]}],
-        temperature=0
-    )
-    decision = resp.choices[0].message.content.strip().upper()
-    return decision.startswith("Y")
+            resp = _chat_with_retries([
+                {"role": "user", "content": [{"type": "text", "text": judge_prompt}]}
+            ])
+            decision = resp.choices[0].message.content.strip().upper()
+            return decision.startswith("Y")
+    except Exception:
+        # fall through to heuristic
+        pass
+
+    # Heuristic fallback: check for token overlap between caption and OCR signals text
+    try:
+        cap_words = set(re.findall(r"\w+", caption.lower()))
+        sig_words = set(re.findall(r"\w+", signals_text.lower()))
+        common = cap_words & sig_words
+        # consider correlated if at least one non-trivial word overlaps (ignore short common words)
+        common = {w for w in common if len(w) > 3}
+        return len(common) >= 1
+    except Exception:
+        return False
 
 
 # -------------------- JSON Enrichment --------------------
@@ -203,29 +293,109 @@ def enrich_json_with_conditions(json_path: str):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    # --- Handle edge case: no images extracted ---
+    if not data or all(not e.get("local_image_path") for e in data):
+        print(f"[INFO] 💤 No images found for OCR in {json_path}. Skipping OCR step.")
+        return
+
+    # helper: skip obvious irrelevant images before costly OpenAI calls
+    # configurable list of tokens that indicate irrelevant images (filename or caption)
+    IRRELEVANT_TOKENS_ENV = os.getenv('IRRELEVANT_TOKENS')
+    if IRRELEVANT_TOKENS_ENV:
+        IRRELEVANT_TOKENS = [t.strip().lower() for t in IRRELEVANT_TOKENS_ENV.split(',') if t.strip()]
+    else:
+        IRRELEVANT_TOKENS = [
+            'logo', 'affiliate', 'promo', 'pixel', 'favicon', 'avatar', 'banner', 'icon',
+            'sprite', 'ads', 'advert', 'tracking', 'thumb', 'thumbnail'
+        ]
+
+    MIN_OCR_BYTES = int(os.getenv('MIN_OCR_BYTES', '8192'))  # 8 KB
+    MIN_OCR_WIDTH = int(os.getenv('MIN_OCR_WIDTH', '300'))
+    MIN_OCR_HEIGHT = int(os.getenv('MIN_OCR_HEIGHT', '200'))
+    # minimum pixel area (width * height). Defaults to 300*200
+    MIN_OCR_AREA = int(os.getenv('MIN_OCR_AREA', str(MIN_OCR_WIDTH * MIN_OCR_HEIGHT)))
+
+    def is_irrelevant_image(path: str, caption: str | None = None) -> bool:
+        try:
+            if not path or not os.path.exists(path):
+                return True
+            # filename tokens
+            name = os.path.basename(path).lower()
+            for t in IRRELEVANT_TOKENS:
+                if t in name:
+                    # small cosmetic token match in filename
+                    print(f"[OCR] Skipping by filename token '{t}': {path}")
+                    return True
+
+            # caption tokens (if provided) - skip if caption clearly points to logo/thumbnail/affiliate
+            if caption:
+                cl = caption.lower()
+                for t in IRRELEVANT_TOKENS:
+                    if t in cl:
+                        print(f"[OCR] Skipping by caption token '{t}': {path} (caption: {caption})")
+                        return True
+            # filesize
+            try:
+                if os.path.getsize(path) < MIN_OCR_BYTES:
+                    print(f"[OCR] Skipping by filesize < {MIN_OCR_BYTES} bytes: {path}")
+                    return True
+            except Exception:
+                pass
+            # dimensions
+            try:
+                with Image.open(path) as im:
+                    w, h = im.size
+                    if w < MIN_OCR_WIDTH or h < MIN_OCR_HEIGHT:
+                        print(f"[OCR] Skipping by dimension < {MIN_OCR_WIDTH}x{MIN_OCR_HEIGHT}: {w}x{h} {path}")
+                        return True
+                    if (w * h) < MIN_OCR_AREA:
+                        print(f"[OCR] Skipping by area < {MIN_OCR_AREA}: {w}x{h} {path}")
+                        return True
+            except Exception:
+                # if we can't open image, mark irrelevant to avoid crashes
+                return True
+            return False
+        except Exception:
+            return True
+
     for entry in data:
         lp = entry.get("local_image_path")
         caption = entry.get("caption_clean")
-        if lp and os.path.exists(lp):
-            print(f"[OCR] Analyzing: {lp}")
-            ocr_obj = analyze_conditions(lp)
-            entry["ocr"] = {
-                "model": "gpt-4o-mini",
-                "summary": ocr_obj.get("summary"),
-                "signals": ocr_obj.get("signals"),
-                "confidence": ocr_obj.get("confidence")
-            }
+        if not lp or not os.path.exists(lp):
+            continue
+        print(f"[OCR] Considering: {lp}")
 
-            correlated = judge_correlation(caption, ocr_obj)
-            if not correlated:
-                print(
-                    "⚠️ [ALERT] Caption/OCR mismatch:\n"
-                    f"  Caption: {caption}\n"
-                    f"  OCR.summary: {entry['ocr']['summary']}\n"
-                    f"  OCR.signals: {json.dumps(entry['ocr']['signals'], ensure_ascii=False)}\n"
-                    f"  Image: {lp}"
-                )
+        if is_irrelevant_image(lp, caption=caption):
+            print(f"[OCR] ⏩ Skipping irrelevant/small image: {lp}")
+            entry["ocr"] = {
+                "model": None,
+                "summary": None,
+                "signals": {},
+                "confidence": 0.0,
+                "skipped": True
+            }
+            continue
+
+        print(f"[OCR] Analyzing: {lp}")
+        ocr_obj = analyze_conditions(lp)
+        entry["ocr"] = {
+            "model": "gpt-4o-mini" if OPENAI_AVAILABLE else None,
+            "summary": ocr_obj.get("summary"),
+            "signals": ocr_obj.get("signals"),
+            "confidence": ocr_obj.get("confidence")
+        }
+
+        correlated = judge_correlation(caption, ocr_obj)
+        if not correlated:
+            print(
+                "⚠️ [ALERT] Caption/OCR mismatch:\n"
+                f"  Caption: {caption}\n"
+                f"  OCR.summary: {entry['ocr']['summary']}\n"
+                f"  OCR.signals: {json.dumps(entry['ocr']['signals'], ensure_ascii=False)}\n"
+                f"  Image: {lp}"
+            )
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     print(f"[INFO] ✅ Updated JSON with structured OCR signals & correlation checks: {json_path}")
+
