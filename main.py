@@ -8,6 +8,7 @@ Orchestrates full pipeline:
 
 import sys
 import time
+import os
 import argparse
 from typing import List
 from extract_captions import extract_and_save
@@ -28,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument('--urls-file', type=str, default=None,
                         help='Path to a file with URLs (one per line) to run in batched LLM mode')
     parser.add_argument('--batch-size', type=int, default=3, help='Number of URLs per LLM batch')
+    parser.add_argument('--write-db', action='store_true', help='Enable writing artifacts to the local TinyDB')
     args = parser.parse_args()
 
     urls: List[str] = []
@@ -67,6 +69,8 @@ if __name__ == "__main__":
 
     # If urls-file was provided, run batch LLM extraction (text-only behavior for batched LLM)
     if args.urls_file:
+        if args.write_db:
+            os.environ['WRITE_TO_DB'] = 'true'
         ts_print(f'[INFO] Running batched extraction for {len(urls)} URLs with batch size {args.batch_size}')
         written = batch_extract_accident_info(urls, batch_size=args.batch_size)
         ts_print(f'[INFO] Wrote {len(written)} artifacts')
