@@ -11,6 +11,9 @@ pytesseract
 # LLM-based enrichment
 openai
 
+# TinyDB for optional local artifact storage
+tinydb
+
 # pip install -r requirements.txt
 
 # export OPENAI_API_KEY=".."

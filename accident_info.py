@@ -49,6 +49,11 @@ try:
 except Exception:
     TIMEZONE = 'America/Vancouver'
     GAZETTEER_ENABLED = False
+try:
+    from store_artifacts import upsert_artifact, init_db
+except Exception:
+    upsert_artifact = None
+    init_db = None
 from openai_call_manager import can_make_call, record_call, remaining
 try:
     # reuse resilient fetch helper when available to avoid duplicate retry logic
@@ -958,6 +963,20 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
+    # optional DB write (opt-in via env var)
+    try:
+        if os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes') and upsert_artifact is not None:
+            try:
+                init_db() if init_db is not None else None
+            except Exception:
+                pass
+            try:
+                upsert_artifact(payload)
+            except Exception as e:
+                print(f"[WARN] Failed to write artifact to DB: {e}")
+    except Exception:
+        pass
+
     print(f"[INFO] ✅ Wrote {json_path}")
     return json_path
 
@@ -1137,6 +1156,19 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             with open(p, 'w', encoding='utf-8') as f:
                 json.dump(payload_write, f, indent=2, ensure_ascii=False)
             written.append(p)
+            # optional DB write for batch items
+            try:
+                if os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes') and upsert_artifact is not None:
+                    try:
+                        init_db() if init_db is not None else None
+                    except Exception:
+                        pass
+                    try:
+                        upsert_artifact(payload_write)
+                    except Exception as e:
+                        print(f"[WARN] Failed to write batch artifact to DB: {e}")
+            except Exception:
+                pass
 
     return written
 

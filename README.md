@@ -184,3 +184,30 @@ Open a PR with focused changes. For scraping heuristics, include before/after sa
 License
 --------
 MIT
+
+DB migration (one-time)
+-----------------------
+If you've been running the pipeline and collected artifacts under `artifacts/<domain>/<timestamp>/`, you can import those JSON artifacts into the optional TinyDB ledger for easier querying and analysis.
+
+Dry-run preview (no DB writes):
+
+```bash
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json --dry-run
+```
+
+Import into DB (writes to `artifacts_db.json` by default):
+
+```bash
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json
+```
+
+Skip already-imported artifacts by source_url:
+
+```bash
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json --skip-existing
+```
+
+Notes and best practices
+- For large imports prefer running the script on a machine with enough disk I/O and consider making a backup copy of the DB file before a large import.
+- TinyDB is convenient for local exploration but not intended for heavy concurrent writes — for production you may prefer SQLite or MongoDB.
+- The script avoids creating a DB file during `--dry-run` so you can preview actions safely.
