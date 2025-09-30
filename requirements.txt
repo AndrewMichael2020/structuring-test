@@ -1,0 +1,16 @@
+# Core dependencies
+requests
+beautifulsoup4
+pandas
+
+# Optional OCR support
+playwright
+pillow
+pytesseract
+
+# Optional LLM cleanup (can be left unconfigured if not used)
+openai
+
+# pip install -r requirements.txt
+
+
