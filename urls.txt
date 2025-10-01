@@ -1,0 +1,8 @@
+# Paste your URLs here. You can use one per line or comma-separated.
+# Lines starting with # are ignored.
+# Example formats:
+# https://example.com/article-a
+# https://example.com/article-b, https://example.com/article-c
+
+https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908
+https://www.climbing.com/news/climbing-fatality-washington/

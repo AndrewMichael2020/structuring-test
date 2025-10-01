@@ -62,8 +62,13 @@ if __name__ == "__main__":
         with open(p, 'r', encoding='utf-8') as f:
             for line in f:
                 s = line.strip()
-                if s:
-                    urls.append(s)
+                if not s or s.startswith('#'):
+                    continue
+                # Support comma-separated lists per line as well as one-per-line
+                parts = [x.strip() for x in s.split(',')]
+                for part in parts:
+                    if part:
+                        urls.append(part)
     elif not args.urls:
         # interactive single URL prompt
         u = input('Enter a URL: ').strip()

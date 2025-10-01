@@ -97,6 +97,19 @@ Important environment variables (all optional, with defaults in code):
 - `IRRELEVANT_TOKENS` — comma-separated tokens used to filter image filenames/URLs early (logo, affiliate, thumbnail, etc.).
 - `MAX_OPENAI_CALLS` — optional cap for how many OpenAI calls this run/session may perform.
 
+Model and app configuration (config.json)
+----------------------------------------
+Model selection and a few feature toggles are centralized in `config.json`, with optional overrides in `config.local.json` (git-ignored). The following keys are used by the pipeline:
+
+- `models.ocr_vision` — vision model used for OCR/vision enrichment (e.g., `gpt-5`).
+- `models.accident_info` — model used for structured accident extraction (e.g., `gpt-5`).
+- `timezone` — used for timestamp formatting and local time conversions.
+- `gazetteer_enabled` — enable simple gazetteer lookups during pre-extraction heuristics.
+
+Notes
+- The code omits temperature for “no-temperature” models (e.g., GPT-5 family) and gracefully falls back when needed.
+- Environment variables can still override behavior where applicable; `config.local.json` lets you customize locally without changing `config.json` in git.
+
 Usage
 ------
 CLI usage (quick):
@@ -111,6 +124,24 @@ python main.py "https://example.com/news/article" --mode=text-only
 # ocr-only (download images + OCR but skip LLM structured extraction)
 python main.py "https://example.com/news/article" --mode=ocr-only
 ```
+
+Batch processing with a URLs file
+---------------------------------
+You can run the LLM extraction in batches using a file of URLs. The file can be one-URL-per-line or comma-separated, and lines starting with `#` are treated as comments. A template is provided in `urls.txt`.
+
+Examples:
+
+```bash
+# text-only LLM extraction, batched 3 at a time
+python main.py --urls-file urls.txt --mode=text-only --batch-size 3
+
+# default batch size (3) and mode
+python main.py --urls-file urls.txt
+```
+
+Notes
+- Batch mode focuses on article text extraction + LLM structuring. OCR/image download is not performed in batch mode.
+- After each run, the pipeline rebuilds `artifacts/artifacts.csv` from on-disk `accident_info.json` files.
 
 Programmatic usage
 ```python
@@ -129,6 +160,21 @@ Artifacts are written to `artifacts/<domain>/<timestamp>/` with the following fi
 	- `scraped_full_text` — cleaned full text (title + paragraphs) for traceability
 	- any structured fields the LLM returned (e.g., `area`, `closest_municipality`, `rescuers`, `missing`, `recovered`, `missing_since`, `recovery_date`)
 - downloaded image files (if download enabled)
+
+CSV rebuild and no-DB flow
+--------------------------
+- The CSV at `artifacts/artifacts.csv` is deterministically rebuilt from on-disk `artifacts/**/accident_info.json` files after each run—no SQLite required.
+- During rebuild you’ll see a concise summary printed, for example:
+
+	`[rebuild] scanned 4 artifacts; wrote 4 rows -> artifacts/artifacts.csv`
+
+- If Google Drive is configured via env (see `drive_storage.py`), the CSV upload happens best-effort once per process.
+- Programmatic rebuild (e.g., if you’ve added/edited artifacts by hand):
+
+```python
+from store_artifacts import force_rebuild_and_upload_artifacts_csv
+force_rebuild_and_upload_artifacts_csv()
+```
 
 Implementation details and heuristics
 -------------------------------------
