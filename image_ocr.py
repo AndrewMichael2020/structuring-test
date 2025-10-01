@@ -185,25 +185,58 @@ def analyze_conditions(image_path: str) -> dict:
                 # convert to grayscale and increase size for better OCR
                 im = im.convert("L")
                 w, h = im.size
-                # resize up to improve readability for small labels
-                scale = 1
-                if max(w, h) < 1200:
-                    scale = min(2, int(1200 / max(w, h)))
+                if max(w, h) < 1600:
+                    scale = min(3, int(1600 / max(w, h)))
                     im = im.resize((w * scale, h * scale))
-                # apply a mild sharpening / contrast via PIL point transform
+
+                # Try multiple preprocessing passes and tesseract configs to maximize extraction
+                tries = []
+
                 try:
-                    from PIL import ImageFilter, ImageEnhance
-                    im = im.filter(ImageFilter.SHARPEN)
-                    enhancer = ImageEnhance.Contrast(im)
-                    im = enhancer.enhance(1.3)
+                    from PIL import ImageFilter, ImageEnhance, ImageOps
+                    # sharpen + contrast
+                    im1 = im.filter(ImageFilter.SHARPEN)
+                    im1 = ImageEnhance.Contrast(im1).enhance(1.5)
+                    tries.append(im1)
+                    # adaptive threshold
+                    im2 = im1.point(lambda p: 255 if p > 150 else 0)
+                    tries.append(im2)
+                    # invert (for white text on dark backgrounds)
+                    tries.append(ImageOps.invert(im2))
                 except Exception:
-                    pass
-                txt = pytesseract.image_to_string(im)
-                return txt or ""
+                    tries.append(im)
+
+                out_txt = []
+                for idx, im_try in enumerate(tries):
+                    try:
+                        # prefer a psm that works for sparse text blocks
+                        config = '--psm 6'
+                        txt = pytesseract.image_to_string(im_try, config=config)
+                        if txt and len(txt.strip()) > 5:
+                            out_txt.append(txt)
+                    except Exception:
+                        continue
+
+                # fallback: try a more aggressive psm
+                if not out_txt:
+                    try:
+                        txt = pytesseract.image_to_string(im, config='--psm 11')
+                        if txt and len(txt.strip()) > 5:
+                            out_txt.append(txt)
+                    except Exception:
+                        pass
+
+                return "\n---\n".join([t.strip() for t in out_txt]) or ""
         except Exception:
             return ""
 
     ocr_text = _do_local_ocr(image_path)
+
+    # parsed_context will hold any richer structures returned by model-based analysis
+    parsed_context = {
+        'mountaineering_extras': None,
+        'image_meta': None,
+    }
 
     # Heuristic parser for common labels: elevation, named points, snow/terrain tokens
     def _parse_ocr_for_signals(text: str) -> dict:
@@ -278,6 +311,128 @@ def analyze_conditions(image_path: str) -> dict:
 
     local_signals = _parse_ocr_for_signals(ocr_text)
 
+    # Decide whether local OCR is good enough. If not, and OpenAI is available,
+    # request a small vision model to transcribe visible labels and return a
+    # compact JSON with detected names/elevations which we merge into signals.
+    def _should_use_model(ocr_text: str, parsed_signals: dict) -> bool:
+        if not ocr_text or len(ocr_text.strip()) < 20:
+            return True
+        # If no named terrain features detected, try model
+        terr = parsed_signals.get('terrain', {})
+        traps = terr.get('terrain_trap') or []
+        if not traps:
+            return True
+        # otherwise local OCR is likely adequate
+        return False
+
+    ocr_model_used = None
+    if _should_use_model(ocr_text, local_signals) and OPENAI_AVAILABLE and client is not None:
+        try:
+            if can_make_call():
+                # Use a stronger model for better visual transcription (configurable)
+                model_name = os.getenv('OPENAI_OCR_MODEL', 'gpt-5')
+
+                # Request a rich JSON matching the user's schema. Keep the prompt explicit
+                ocr_request_prompt = (
+                    "You are an expert mountain imagery analyst. Analyze the provided image and RETURN A SINGLE JSON OBJECT (no surrounding text) using the schema below."
+                    "\nTop-level keys: 'ocr' (ocr_text, summary, model, confidence, signals), 'mountaineering_extras' (geo_points, route_character, objective_hazards, technical_rating_est, incline_degrees, glacier_condition_est, approach_mode, retreat_options), and 'image_meta' (exif/gps if visible)."
+                    "\nFor any field not visible, use null or empty containers. Ensure numeric estimates are numbers where possible."
+                    "\nSchema (abridged): {\n  \"ocr\": {\"ocr_text\": \"...\", \"summary\": \"...\", \"signals\": { ... }, \"confidence\": 0.0},\n  \"mountaineering_extras\": { ... },\n  \"image_meta\": { ... }\n}"
+                )
+
+                user_content = [
+                    {"type": "text", "text": ocr_request_prompt},
+                    {"type": "image_url", "image_url": {"url": data_url}}
+                ]
+
+                resp = _chat_with_retries([
+                    {"role": "user", "content": user_content}
+                ], model_name=model_name)
+                try:
+                    record_call(1)
+                except Exception:
+                    pass
+
+                model_txt = resp.choices[0].message.content.strip()
+                # try parse JSON
+                parsed = None
+                try:
+                    parsed = json.loads(model_txt)
+                except Exception:
+                    # try to extract first JSON block
+                    m = re.search(r"\{.*\}", model_txt, flags=re.S)
+                    if m:
+                        try:
+                            parsed = json.loads(m.group(0))
+                        except Exception:
+                            parsed = None
+
+                if isinstance(parsed, dict):
+                    # merge high-quality OCR text if present
+                    model_ocr = parsed.get('ocr') or {}
+                    mt = model_ocr.get('ocr_text') or parsed.get('ocr_text') or parsed.get('text')
+                    if mt and len(str(mt).strip()) > len(ocr_text.strip()):
+                        ocr_text = str(mt)
+
+                    # if model returned signals, merge them preferentially
+                    try:
+                        m_signals = model_ocr.get('signals') or {}
+                        for k, v in m_signals.items():
+                            if v is not None:
+                                local_signals[k] = v if isinstance(v, dict) else local_signals.get(k, v)
+                    except Exception:
+                        pass
+
+                    # mountaineering extras and image meta
+                    parsed_mounts = parsed.get('mountaineering_extras') or parsed.get('mountaineering')
+                    parsed_image_meta = parsed.get('image_meta')
+
+                    # extract named points from mountaineering extras or model_ocr
+                    npnts = []
+                    try:
+                        if model_ocr.get('named_points'):
+                            npnts = model_ocr.get('named_points')
+                        elif parsed_mounts and isinstance(parsed_mounts, dict):
+                            gp = parsed_mounts.get('geo_points') or {}
+                            for v in gp.values():
+                                if isinstance(v, str) and v:
+                                    npnts.append(v)
+                    except Exception:
+                        npnts = []
+                    if npnts:
+                        try:
+                            npnts = [str(x).strip() for x in npnts if x]
+                            local_signals['terrain']['terrain_trap'] = list(dict.fromkeys(npnts))
+                        except Exception:
+                            pass
+
+                    # numeric elevation hints from parsed_mounts
+                    try:
+                        if parsed_mounts and isinstance(parsed_mounts, dict):
+                            gp = parsed_mounts.get('geo_points') or {}
+                            for v in gp.values():
+                                if isinstance(v, str):
+                                    m = re.search(r"(\d{1,3}(?:,\d{3})?)\s*ft", v)
+                                    if m:
+                                        fe = int(m.group(1).replace(',', ''))
+                                        local_signals.setdefault('elevation_feet', fe)
+                                        if fe > 8000:
+                                            local_signals['terrain']['elevation_band'] = 'alpine'
+                                        break
+                    except Exception:
+                        pass
+
+                    # store parsed extras into local variables to attach later
+                    parsed_context = {
+                        'mountaineering_extras': parsed_mounts,
+                        'image_meta': parsed_image_meta,
+                    }
+
+                    ocr_model_used = model_name
+        except Exception:
+            # best-effort: ignore model failures and continue with local_signals
+            pass
+
     # Full OpenAI path. Respect per-run cap.
     if not can_make_call():
         print(f"[OCR] OpenAI call cap reached (remaining=0). Skipping GPT analysis for {image_path}")
@@ -286,7 +441,10 @@ def analyze_conditions(image_path: str) -> dict:
             "summary": (ocr_text.splitlines()[0].strip() if ocr_text else os.path.basename(image_path)),
             "signals": local_signals,
             "confidence": 0.0,
-            "ocr_text": ocr_text
+            "ocr_text": ocr_text,
+            "model": None,
+            "mountaineering_extras": parsed_context.get('mountaineering_extras'),
+            "image_meta": parsed_context.get('image_meta')
         }
 
     # When OpenAI is available, include the local OCR text to help the vision model
@@ -315,7 +473,10 @@ def analyze_conditions(image_path: str) -> dict:
             "summary": (ocr_text.splitlines()[0].strip() if ocr_text else os.path.basename(image_path)),
             "signals": local_signals,
             "confidence": 0.0,
-            "ocr_text": ocr_text
+            "ocr_text": ocr_text,
+            "model": None,
+            "mountaineering_extras": parsed_context.get('mountaineering_extras'),
+            "image_meta": parsed_context.get('image_meta')
         }
 
     # Parse strict JSON; fallback to baseline if needed
@@ -339,6 +500,11 @@ def analyze_conditions(image_path: str) -> dict:
                             obj['signals'][top_k] = top_v
                 # include OCR text for debugging/traceability
                 obj['ocr_text'] = ocr_text
+                # attach any parsed context the earlier model branch may have populated
+                obj['mountaineering_extras'] = parsed_context.get('mountaineering_extras')
+                obj['image_meta'] = parsed_context.get('image_meta')
+                # record which model produced any model-based enrichments (if available)
+                obj['model'] = ocr_model_used or os.getenv('OPENAI_OCR_MODEL', 'gpt-4o-mini') if OPENAI_AVAILABLE else None
         except Exception:
             pass
         return obj
@@ -365,6 +531,11 @@ def analyze_conditions(image_path: str) -> dict:
                 "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None}
             },
             "confidence": 0.3
+            ,
+            "ocr_text": ocr_text,
+            "model": os.getenv('OPENAI_OCR_MODEL', 'gpt-4o-mini') if OPENAI_AVAILABLE else None,
+            "mountaineering_extras": parsed_context.get('mountaineering_extras'),
+            "image_meta": parsed_context.get('image_meta')
         }
 
 
@@ -418,6 +589,13 @@ def judge_correlation(caption: str, ocr_obj: dict) -> bool:
     except Exception:
         # fall through to heuristic
         pass
+
+    # If caption is a generic photo credit or short description, skip alerting.
+    if caption:
+        low = caption.strip().lower()
+        generic_tokens = ['photo', 'image', 'national park service', 'source:', 'credit:', 'photo by']
+        if any(tok in low for tok in generic_tokens) and len(low) < 200:
+            return True
 
     # Heuristic fallback: check for token overlap between caption and OCR signals text
     try:
@@ -523,10 +701,13 @@ def enrich_json_with_conditions(json_path: str):
         print(f"[OCR] Analyzing: {lp}")
         ocr_obj = analyze_conditions(lp)
         entry["ocr"] = {
-            "model": "gpt-4o-mini" if OPENAI_AVAILABLE else None,
+            "model": ocr_obj.get("model"),
             "summary": ocr_obj.get("summary"),
             "signals": ocr_obj.get("signals"),
-            "confidence": ocr_obj.get("confidence")
+            "confidence": ocr_obj.get("confidence"),
+            "ocr_text": ocr_obj.get("ocr_text"),
+            "mountaineering_extras": ocr_obj.get("mountaineering_extras"),
+            "image_meta": ocr_obj.get("image_meta")
         }
 
         correlated = judge_correlation(caption, ocr_obj)
