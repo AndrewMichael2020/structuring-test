@@ -29,3 +29,8 @@ artifacts/
 
 # Local environment file (store secrets like OPENAI_API_KEY here)
 .env
+
+# Database files
+*.db
+artifacts.db
+artifacts.db

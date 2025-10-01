@@ -21,12 +21,12 @@ Notes:
   export OPENAI_API_KEY=sk-...your-key-here...
 
 
-Migration example
------------------
-After collecting artifacts you can import them into the optional TinyDB ledger with:
+Import example
+----------------
+After collecting artifacts you can import them into the SQLite artifacts DB with:
 
 ```bash
-python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json --dry-run
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts.db --dry-run
 ```
 
 Remove `--dry-run` to perform the actual import. Use `--skip-existing` to avoid re-importing artifacts already present in the DB.

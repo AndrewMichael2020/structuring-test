@@ -4,11 +4,7 @@ import json
 import os
 import sqlite3
 
-try:
-    from tinydb import TinyDB, Query  # type: ignore
-except Exception:
-    TinyDB = None
-    Query = None
+Query = None
 
 
 class _InMemoryDB:
@@ -65,29 +61,22 @@ class _InMemoryDB:
 
 
 _DB: Optional[object] = None
-_DB_TYPE: Optional[str] = None  # 'tinydb', 'sqlite', or 'memory'
+_DB_TYPE: Optional[str] = None  # 'sqlite' or 'memory'
 
 
-def init_db(path: str | Path = "artifacts_db.json", backend: str | None = None) -> None:
+def init_db(path: str | Path = "artifacts.db", backend: str | None = None) -> None:
     """Initialize the DB backend.
 
-    Backend selection order:
-    - if env STORE_BACKEND == 'sqlite' -> use sqlite3 with the given path
-    - elif tinydb is available -> use TinyDB
-    - else -> use in-memory fallback
+    Backend selection: prefer sqlite; fall back to in-memory if sqlite can't be created.
     """
     global _DB, _DB_TYPE
-    env_backend = os.environ.get('STORE_BACKEND', '').strip().lower()
-    backend = (backend or env_backend or '').strip().lower()
+    # Always prefer sqlite backend for persistence. Fall back to in-memory DB only if sqlite fails.
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-
-    if backend == 'sqlite':
+    try:
         conn = sqlite3.connect(str(p))
-        # enable returning rows as dicts
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        # enable WAL for better concurrency and robustness on larger imports
         try:
             cur.execute("PRAGMA journal_mode=WAL;")
         except Exception:
@@ -109,12 +98,8 @@ def init_db(path: str | Path = "artifacts_db.json", backend: str | None = None) 
         _DB = conn
         _DB_TYPE = 'sqlite'
         return
-
-    # fallback to TinyDB if available
-    if TinyDB is not None:
-        _DB = TinyDB(str(p))
-        _DB_TYPE = 'tinydb'
-    else:
+    except Exception:
+        # fallback to in-memory DB
         _DB = _InMemoryDB(path)
         _DB_TYPE = 'memory'
 
@@ -179,13 +164,6 @@ def upsert_artifact(doc: Dict[str, Any]) -> None:
                 ),
             )
             _DB.commit()
-        elif _DB_TYPE == 'tinydb':
-            q = Query()
-            existing = _DB.search(q.source_url == src)
-            if existing:
-                _DB.update(rec, q.source_url == src)
-            else:
-                _DB.insert(rec)
         else:
             # in-memory backend
             existing = _DB.search(lambda d: d.get('source_url') == src)
@@ -206,7 +184,23 @@ def query_artifacts(filters: Dict[str, Any] | None = None):
     if _DB is None:
         init_db()
     if not filters:
-        return _DB.all()
+        # No filters: return all rows for sqlite (or limited to protect memory)
+        if _DB_TYPE == 'sqlite':
+            cur = _DB.cursor()
+            cur.execute("SELECT * FROM artifacts")
+            rows = cur.fetchall()
+            out = []
+            for r in rows:
+                d = dict(r)
+                if d.get('artifact_json'):
+                    try:
+                        d['artifact'] = json.loads(d['artifact_json'])
+                    except Exception:
+                        d['artifact'] = d.get('artifact_json')
+                out.append(d)
+            return out
+        else:
+            return _DB.all()
     # sqlite backend: build simple WHERE clause using equality checks
     if _DB_TYPE == 'sqlite':
         cols = []
@@ -231,19 +225,7 @@ def query_artifacts(filters: Dict[str, Any] | None = None):
             out.append(d)
         return out
 
-    # If tinydb is available, use Query expressions
-    if _DB_TYPE == 'tinydb' and TinyDB is not None:
-        q = Query()
-        # build query by chaining equality
-        expr = None
-        for k, v in filters.items():
-            if expr is None:
-                expr = getattr(q, k) == v
-            else:
-                expr = expr & (getattr(q, k) == v)
-        if expr is None:
-            return _DB.all()
-        return _DB.search(expr)
+    # in-memory filter: simple dict match
     # in-memory filter: simple dict match
     def match(d):
         for k, v in filters.items():

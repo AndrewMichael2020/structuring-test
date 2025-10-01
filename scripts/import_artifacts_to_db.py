@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Import existing artifacts JSON files under artifacts/ into the TinyDB store.
+"""Import existing artifacts JSON files under artifacts/ into the artifacts DB (SQLite).
 
 Usage:
-  python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json [--dry-run] [--skip-existing]
+    python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts.db [--dry-run] [--skip-existing]
 """
 import argparse
 import json
@@ -36,8 +36,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--artifacts-dir', default='artifacts')
-    parser.add_argument('--db-path', default='artifacts_db.json')
-    parser.add_argument('--backend', default=None, choices=['sqlite', 'tinydb', 'memory'], help='Optional backend to use for storing artifacts')
+    parser.add_argument('--db-path', default='artifacts.db')
+    parser.add_argument('--backend', default='sqlite', choices=['sqlite', 'memory'], help='Optional backend to use for storing artifacts')
     parser.add_argument('--log-file', default=None, help='Optional file to append logs to')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--skip-existing', action='store_true')
@@ -105,8 +105,8 @@ def main():
     writer.start()
     parser = argparse.ArgumentParser()
     parser.add_argument('--artifacts-dir', default='artifacts')
-    parser.add_argument('--db-path', default='artifacts_db.json')
-    parser.add_argument('--backend', default=None, choices=['sqlite', 'tinydb', 'memory'], help='Optional backend to use for storing artifacts')
+    parser.add_argument('--db-path', default='artifacts.db')
+    parser.add_argument('--backend', default='sqlite', choices=['sqlite', 'memory'], help='Optional backend to use for storing artifacts')
     parser.add_argument('--log-file', default=None, help='Optional file to append logs to')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--skip-existing', action='store_true')
