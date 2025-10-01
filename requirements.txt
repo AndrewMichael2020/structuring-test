@@ -23,6 +23,13 @@ google-auth-oauthlib
 
 # pip install -r requirements.txt
 
-# # source .venv/bin/activate
+# source venv/bin/activate
 
 # python main.py "..."
+
+# python - <<'PY'
+# from store_artifacts import force_rebuild_and_upload_artifacts_csv
+# print('Rebuilding...')
+# force_rebuild_and_upload_artifacts_csv()
+# print('Done')
+# PY

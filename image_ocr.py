@@ -23,6 +23,12 @@ from PIL import Image
 import openai as _openai
 from openai import OpenAI
 from openai_call_manager import can_make_call, record_call, remaining
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except Exception:
+    pytesseract = None
+    TESSERACT_AVAILABLE = False
 
 # Initialize OpenAI client only if API key is present to avoid hard failure on import
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -64,6 +70,36 @@ if _OPENAI_API_KEY:
 else:
     client = None
     OPENAI_AVAILABLE = False
+
+# Ensure a module-level _chat_with_retries exists (the code above attempted to
+# define one but indentation could prevent it from being at module scope).
+def _chat_with_retries(payload_messages, model_name="gpt-4o-mini", max_retries=6):
+    """Call the OpenAI client with retry/backoff. Raises RuntimeError when no client is available."""
+    if not OPENAI_AVAILABLE or client is None:
+        raise RuntimeError("OpenAI client not available")
+    backoff = 0.5
+    for attempt in range(max_retries):
+        try:
+            return client.chat.completions.create(
+                model=model_name,
+                messages=payload_messages,
+                temperature=0
+            )
+        except Exception as e:
+            try:
+                import openai as _openai_local
+                if hasattr(_openai_local, 'RateLimitError') and isinstance(e, _openai_local.RateLimitError):
+                    wait = backoff * (2 ** attempt)
+                    time.sleep(wait)
+                    continue
+            except Exception:
+                pass
+            msg = str(e).lower()
+            if 'rate limit' in msg or '429' in msg or 'tokens per min' in msg:
+                wait = backoff * (2 ** attempt)
+                time.sleep(wait)
+                continue
+            raise
 
 
 # -------------------- Image Encoding --------------------
@@ -138,56 +174,149 @@ _SCHEMA_PROMPT = (
 
 def analyze_conditions(image_path: str) -> dict:
     """Run GPT-4o-mini vision, return parsed dict with strict schema. If parsing fails, fallback to minimal dict."""
-    # If OpenAI isn't available, return a minimal fallback structure using only OCR (no GPT analysis)
     data_url = _encode_image_as_data_url(image_path)
-    if not OPENAI_AVAILABLE or client is None:
-        # Basic fallback: return a minimal structure with low confidence using only image filename
-        return {
-            "summary": os.path.basename(image_path),
-            "signals": {
-                "avalanche_signs": {"crown_line": None, "debris": None, "slide_paths": None, "size_est": None, "slab_type": None},
-                "snow_surface": {"full_coverage": None, "cornice": None, "wind_loading": None, "melt_freeze_crust": None},
-                "terrain": {"slope_angle_class": None, "aspect": "unknown", "terrain_trap": [], "elevation_band": None},
-                "glacier": {"crevasses": None, "seracs": None, "snow_bridge_likely": None},
-                "weather": {"sky": None, "visibility": None, "precip": None, "wind": None},
-                "human_activity": {"tracks": None, "people_present": None, "rope_or_harness": None, "helmet": None},
-                "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None}
-            },
-            "confidence": 0.0
+
+    # Local OCR helper: use pytesseract if available to extract text from the image.
+    def _do_local_ocr(path: str) -> str:
+        if not TESSERACT_AVAILABLE:
+            return ""
+        try:
+            with Image.open(path) as im:
+                # convert to grayscale and increase size for better OCR
+                im = im.convert("L")
+                w, h = im.size
+                # resize up to improve readability for small labels
+                scale = 1
+                if max(w, h) < 1200:
+                    scale = min(2, int(1200 / max(w, h)))
+                    im = im.resize((w * scale, h * scale))
+                # apply a mild sharpening / contrast via PIL point transform
+                try:
+                    from PIL import ImageFilter, ImageEnhance
+                    im = im.filter(ImageFilter.SHARPEN)
+                    enhancer = ImageEnhance.Contrast(im)
+                    im = enhancer.enhance(1.3)
+                except Exception:
+                    pass
+                txt = pytesseract.image_to_string(im)
+                return txt or ""
+        except Exception:
+            return ""
+
+    ocr_text = _do_local_ocr(image_path)
+
+    # Heuristic parser for common labels: elevation, named points, snow/terrain tokens
+    def _parse_ocr_for_signals(text: str) -> dict:
+        signals = {
+            "avalanche_signs": {"crown_line": None, "debris": None, "slide_paths": None, "size_est": None, "slab_type": None},
+            "snow_surface": {"full_coverage": None, "cornice": None, "wind_loading": None, "melt_freeze_crust": None},
+            "terrain": {"slope_angle_class": None, "aspect": "unknown", "terrain_trap": [], "elevation_band": None},
+            "glacier": {"crevasses": None, "seracs": None, "snow_bridge_likely": None},
+            "weather": {"sky": None, "visibility": None, "precip": None, "wind": None},
+            "human_activity": {"tracks": None, "people_present": None, "rope_or_harness": None, "helmet": None},
+            "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None},
         }
+        t = text or ""
+        low = t.lower()
+        # elevation in feet
+        m = re.search(r"(\d{1,3}(?:,\d{3})?)\s*(?:ft|feet)\b", t)
+        if m:
+            try:
+                feet = int(m.group(1).replace(',', ''))
+                # set a simple elevation_band heuristic
+                if feet > 8000:
+                    signals['terrain']['elevation_band'] = 'alpine'
+                elif feet > 3000:
+                    signals['terrain']['elevation_band'] = 'treeline'
+                else:
+                    signals['terrain']['elevation_band'] = 'below_treeline'
+                # include numeric elevation as a helper under terrain_trap for visibility
+                signals.setdefault('elevation_feet', feet)
+            except Exception:
+                pass
+        # named features (Glacier, Point, Camp)
+        names = re.findall(r"([A-Z][A-Za-z'\- ]{2,40}(?:Glacier|Point|Camp|Ridge|Peak|Creek|Pass))", t)
+        if names:
+            # put likely tokens into terrain.terrain_trap for consumers
+            signals['terrain']['terrain_trap'] = list(dict.fromkeys([n.strip() for n in names]))
+        # detect cornice/serac/crevasse
+        if re.search(r"cornice", low):
+            signals['snow_surface']['cornice'] = 'large'
+        if re.search(r"serac", low):
+            signals['glacier']['seracs'] = True
+        if re.search(r"crevasse", low):
+            signals['glacier']['crevasses'] = True
+        # detect slope degrees or words like steep
+        m2 = re.search(r"(\d{1,2})\s*(?:°|degrees)\b", t)
+        if m2:
+            try:
+                deg = int(m2.group(1))
+                if deg < 30:
+                    signals['terrain']['slope_angle_class'] = '<30'
+                elif deg < 35:
+                    signals['terrain']['slope_angle_class'] = '30-35'
+                elif deg < 40:
+                    signals['terrain']['slope_angle_class'] = '35-40'
+                else:
+                    signals['terrain']['slope_angle_class'] = '>40'
+            except Exception:
+                pass
+        elif re.search(r"steep|cliff|sheer", low):
+            signals['terrain']['slope_angle_class'] = '>40'
+
+        # snow keywords
+        if re.search(r"wind ?loading|windloaded", low):
+            signals['snow_surface']['wind_loading'] = 'moderate'
+        if re.search(r"patchy|continuous|full ?coverage", low):
+            # crude mapping
+            if 'patchy' in low:
+                signals['snow_surface']['full_coverage'] = 'patchy'
+            else:
+                signals['snow_surface']['full_coverage'] = 'continuous'
+
+        return signals
+
+    local_signals = _parse_ocr_for_signals(ocr_text)
 
     # Full OpenAI path. Respect per-run cap.
     if not can_make_call():
         print(f"[OCR] OpenAI call cap reached (remaining=0). Skipping GPT analysis for {image_path}")
+        # Return heuristics enriched by local OCR when OpenAI calls are not possible
         return {
-            "summary": os.path.basename(image_path),
-            "signals": {
-                "avalanche_signs": {"crown_line": None, "debris": None, "slide_paths": None, "size_est": None, "slab_type": None},
-                "snow_surface": {"full_coverage": None, "cornice": None, "wind_loading": None, "melt_freeze_crust": None},
-                "terrain": {"slope_angle_class": None, "aspect": "unknown", "terrain_trap": [], "elevation_band": None},
-                "glacier": {"crevasses": None, "seracs": None, "snow_bridge_likely": None},
-                "weather": {"sky": None, "visibility": None, "precip": None, "wind": None},
-                "human_activity": {"tracks": None, "people_present": None, "rope_or_harness": None, "helmet": None},
-                "rescue": {"helicopter": None, "longline": None, "recco": None, "personnel_on_foot": None}
-            },
-            "confidence": 0.0
+            "summary": (ocr_text.splitlines()[0].strip() if ocr_text else os.path.basename(image_path)),
+            "signals": local_signals,
+            "confidence": 0.0,
+            "ocr_text": ocr_text
         }
 
-    resp = _chat_with_retries([
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": _SCHEMA_PROMPT},
-                {"type": "image_url", "image_url": {"url": data_url}}
-            ]
-        }
-    ])
-    # Record that we made one OpenAI call
+    # When OpenAI is available, include the local OCR text to help the vision model
+    user_content = [{"type": "text", "text": _SCHEMA_PROMPT}]
+    if ocr_text:
+        # provide OCR output as additional context to the model
+        user_content.insert(0, {"type": "text", "text": f"OCR_TEXT:\n{ocr_text}"})
+    user_content.append({"type": "image_url", "image_url": {"url": data_url}})
+
     try:
-        record_call(1)
+        resp = _chat_with_retries([
+            {
+                "role": "user",
+                "content": user_content
+            }
+        ])
+        # Record that we made one OpenAI call
+        try:
+            record_call(1)
+        except Exception:
+            pass
+        txt = resp.choices[0].message.content.strip()
     except Exception:
-        pass
-    txt = resp.choices[0].message.content.strip()
+        # Fall back to local OCR heuristics when OpenAI is not available or call fails
+        return {
+            "summary": (ocr_text.splitlines()[0].strip() if ocr_text else os.path.basename(image_path)),
+            "signals": local_signals,
+            "confidence": 0.0,
+            "ocr_text": ocr_text
+        }
 
     # Parse strict JSON; fallback to baseline if needed
     try:
@@ -197,6 +326,21 @@ def analyze_conditions(image_path: str) -> dict:
             raise ValueError("Non-dict JSON")
         if "summary" not in obj or "signals" not in obj or "confidence" not in obj:
             raise ValueError("Missing required keys")
+        # Merge any non-null local_signals into the returned object when the model omits them
+        try:
+            if isinstance(obj, dict):
+                # prefer model signals, but fill missing pieces from local_signals
+                if not obj.get('signals'):
+                    obj['signals'] = local_signals
+                else:
+                    # merge nested keys conservatively
+                    for top_k, top_v in local_signals.items():
+                        if top_k not in obj['signals'] or not obj['signals'].get(top_k):
+                            obj['signals'][top_k] = top_v
+                # include OCR text for debugging/traceability
+                obj['ocr_text'] = ocr_text
+        except Exception:
+            pass
         return obj
     except Exception:
         # Fallback: ask for plain short phrase only (rare)

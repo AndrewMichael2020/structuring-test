@@ -327,7 +327,17 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
         row['artifact_json'] = ''
 
     # update/insert our incoming record
-    existing[row.get('source_url')] = row
+    # If caller requested a rebuild-only sync, don't insert the provided `rec`
+    # which may be an empty placeholder (calling code historically passed
+    # `{}` to force a full rebuild). This prevents creating a blank/empty
+    # CSV row keyed by a missing source_url.
+    try:
+        rebuild_only = bool(rec.get('__rebuild_only__'))
+    except Exception:
+        rebuild_only = False
+
+    if not rebuild_only and row.get('source_url'):
+        existing[row.get('source_url')] = row
     rows = list(existing.values())
     # At this point `existing` contains rows keyed by source_url.
     # Build a stable set of fieldnames: canonical fields first, then any extras
@@ -689,6 +699,8 @@ def force_rebuild_and_upload_artifacts_csv():
     """Force a deterministic rebuild of the artifacts CSV and upload to Drive (if configured)."""
     try:
         # This is equivalent to calling _maybe_sync_to_drive with a dummy rec, which triggers a full scan and upload
-        _maybe_sync_to_drive({})
+        # Call with a rebuild-only flag so the sync logic does a full scan but
+        # does not attempt to upsert an empty incoming record.
+        _maybe_sync_to_drive({'__rebuild_only__': True})
     except Exception:
         pass
