@@ -265,8 +265,10 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
             except Exception:
                 return False
     try:
-        # look for all accident_info.json files under artifacts/*/*
-        for path in glob.glob(os.path.join('artifacts', '*', '*', 'accident_info.json')):
+        # look for all accident_info.json files under artifacts/ recursively.
+        # This supports both artifacts/<domain>/<ts>/accident_info.json and
+        # flat structures like artifacts/<domain>/accident_info.json
+        for path in glob.glob(os.path.join('artifacts', '**', 'accident_info.json'), recursive=True):
             try:
                 with open(path, 'r', encoding='utf-8') as fh:
                     a = json.load(fh)
@@ -398,6 +400,15 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
             _write_local_csv(_LOCAL_CSV_PATH, [], fieldnames=csv_fieldnames)
         except Exception:
             pass
+
+    # Emit a concise summary so manual runs show progress
+    try:
+        print(
+            f"[rebuild] scanned {len(existing)} artifacts; "
+            f"wrote {len(normalized_rows)} rows -> {_LOCAL_CSV_PATH}"
+        )
+    except Exception:
+        pass
 
     # Now attempt to upload to Drive if available. Use an in-process guard so
     # multiple callers don't upload more than once per run.

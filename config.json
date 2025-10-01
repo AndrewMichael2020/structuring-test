@@ -1,0 +1,8 @@
+{
+  "timezone": "America/Vancouver",
+  "gazetteer_enabled": false,
+  "models": {
+    "ocr_vision": "gpt-5",
+    "accident_info": "gpt-5"
+  }
+}

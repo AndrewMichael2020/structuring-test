@@ -2,12 +2,15 @@
 """
 accident_info.py
 
-Page-level accident metadata extraction using OpenAI gpt-4o-mini.
+Page-level accident metadata extraction using an OpenAI model configured
+via config (ACCIDENT_INFO_MODEL).
 
-- Fetches page HTML and extracts main article text (robust selectors + fallback).
-- Asks gpt-4o-mini to return STRICT JSON with only present fields.
+- Fetches page HTML and extracts main article text (robust selectors +
+  fallback).
+- Asks a model like GPT-5 to return STRICT JSON with only present fields.
 - Validates and normalizes dates to ISO (YYYY-MM-DD) when possible.
-- Writes artifacts/<domain>/<timestamp>/accident_info.json unless out_dir is provided.
+- Writes artifacts/<domain>/<timestamp>/accident_info.json unless out_dir is
+  provided.
 
 Usage (standalone):
     python accident_info.py "<URL>"
@@ -24,7 +27,6 @@ import os
 import re
 import json
 import sys
-import hashlib
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 try:
@@ -34,7 +36,8 @@ except Exception:
 from pathlib import Path
 import logging
 
-# Attempt to load a .env file in the project directory so os.getenv sees local keys (e.g., OPENAI_API_KEY)
+# Attempt to load a .env file in the project directory so os.getenv sees
+# local keys (e.g., OPENAI_API_KEY)
 try:
     # prefer python-dotenv if available
     from dotenv import load_dotenv  # type: ignore
@@ -46,8 +49,8 @@ try:
         # fall back to default search behavior
         load_dotenv(override=False)
 except Exception:
-    # If python-dotenv isn't installed, try a minimal manual parse of a .env file so
-    # local development still works without the dependency.
+    # If python-dotenv isn't installed, try a minimal manual parse of a .env
+    # file so local development still works without the dependency.
     try:
         env_path = Path(__file__).parent / '.env'
         if env_path.exists():
@@ -78,15 +81,11 @@ try:
 except Exception:
     _HAS_DATEUTIL = False
 
-from openai import OpenAI
-try:
-    from config import TIMEZONE, GAZETTEER_ENABLED
-except Exception:
-    TIMEZONE = 'America/Vancouver'
-    GAZETTEER_ENABLED = False
+from config import ACCIDENT_INFO_MODEL
 try:
     try:
-        # prefer the DB upsert when available, but also expose a Drive-only sync helper
+    # prefer the DB upsert when available, but also expose a Drive-only
+    # sync helper
         from store_artifacts import upsert_artifact, init_db, sync_artifact_to_drive
     except Exception:
         upsert_artifact = None
@@ -96,226 +95,42 @@ except Exception:
     upsert_artifact = None
     init_db = None
 from openai_call_manager import can_make_call, record_call
-from time_utils import now_pst_iso, now_pst_filename_ts
-try:
-    # reuse resilient fetch helper when available to avoid duplicate retry logic
-    from extract_captions import get_with_retries
-except Exception:
-    get_with_retries = None
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if _OPENAI_API_KEY:
+from time_utils import now_pst_iso
+
+# Toggle whether to inject a small stealth/init script into Playwright
+# contexts. Set PLAYWRIGHT_STEALTH=0/false to disable if it causes
+# compatibility issues.
+PLAYWRIGHT_STEALTH = os.getenv("PLAYWRIGHT_STEALTH", "true").lower() in (
+    "1", "true", "yes"
+)
+
+from accident_utils import _ensure_outdir, _slugify
+from accident_preextract import pre_extract_fields
+from accident_postprocess import _postprocess, compute_confidence
+from accident_llm import llm_extract, _OPENAI_AVAILABLE
+
+# Local client shim for tests; batch path uses this _client via _chat_create
+_client = None
+
+def _supports_temperature(model_name: str) -> bool:
     try:
-        _client = OpenAI()
-        _OPENAI_AVAILABLE = True
+        mn = (model_name or '').lower()
+        return not mn.startswith('gpt-5')
     except Exception:
-        _client = None
-        _OPENAI_AVAILABLE = False
-else:
-    _client = None
-    _OPENAI_AVAILABLE = False
+        return True
 
-# Toggle whether to inject a small stealth/init script into Playwright contexts.
-# Set PLAYWRIGHT_STEALTH=0/false to disable if it causes compatibility issues.
-PLAYWRIGHT_STEALTH = os.getenv("PLAYWRIGHT_STEALTH", "true").lower() in ("1", "true", "yes")
-
-# -------------------- helpers --------------------
-
-def _slugify(text: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", text)
-
-def _hash(text: str) -> str:
-    return hashlib.md5(text.encode("utf-8")).hexdigest()[:10]
-
-def _ensure_outdir(url: str, base_output: str = "artifacts") -> Path:
-    domain = urlparse(url).netloc.replace("www.", "")
-    # use PST / America/Los_Angeles for consistent artifact timestamps
-    try:
-        ts = now_pst_filename_ts()
-    except Exception:
-        ts = now_pst_filename_ts()
-    p = Path(base_output) / _slugify(domain) / ts
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-def _iso_or_none(s: str | None) -> str | None:
-    if not s or not isinstance(s, str):
-        return None
-    s = s.strip()
-    # accept already ISO
-    try:
-        datetime.fromisoformat(s)
-        return s
-    except Exception:
-        pass
-    # try to parse common natural dates if dateutil exists
-    if _HAS_DATEUTIL:
-        try:
-            dt = dateparser.parse(s, fuzzy=True)  # type: ignore
-            if dt:
-                return dt.date().isoformat()
-        except Exception:
-            return None
-    return None
-
-def _clean_text_blocks(txt: str) -> str:
-    # collapse whitespace, keep sentences
-    txt = re.sub(r"\s+", " ", txt)
-    return txt.strip()
+def _chat_create(messages: list, model: str):
+    kwargs = {'model': model, 'messages': messages}
+    if _supports_temperature(model):
+        kwargs['temperature'] = 0
+    # Expect _client to be patched in tests; otherwise this will raise
+    return _client.chat.completions.create(**kwargs)
 
 
 # use centralized timezone helpers in `time_utils.py`
 
 
-def pre_extract_fields(text: str) -> dict:
-    """Deterministic pre-extraction using regexes to reduce LLM surface area.
-
-    Returns a dict of likely fields (dates, simple counts, names+ages, rescue orgs).
-    This is intentionally conservative: it's OK to omit values; do not invent.
-    """
-    out: dict = {}
-    if not text or not isinstance(text, str):
-        return out
-
-    # simple date-ish patterns (e.g., May 16, 2025 / May 16 / 16 May 2025)
-    date_patterns = [r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[\s\d,0-9]{2,20}"]
-    dates = []
-    for p in date_patterns:
-        for m in re.finditer(p, text, flags=re.IGNORECASE):
-            txt = m.group(0).strip(' ,.')
-            dates.append(txt)
-    if dates:
-        out['pre_dates'] = dates[:3]
-
-    # name + age patterns: "John Smith, 38" or "John Smith, 38," etc.
-    people = []
-    for m in re.finditer(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}),\s*(\d{1,3})\b", text):
-        name = m.group(1).strip()
-        age = int(m.group(2))
-        people.append({'name': name, 'age': age})
-    if people:
-        out['people_pre'] = people[:10]
-
-    # unnamed people patterns: '22-year-old woman', 'a 22-year-old man', 'the 22-year-old'
-    unnamed = []
-    for m in re.finditer(r"\b(\d{1,3})[- ]?year[- ]?old\b(?:\s+([A-Za-z\-]+))?", text, flags=re.IGNORECASE):
-        try:
-            age = int(m.group(1))
-        except Exception:
-            continue
-        sex = None
-        if m.group(2):
-            s = m.group(2).lower()
-            if s in ('man', 'male', 'boy'):
-                sex = 'male'
-            elif s in ('woman', 'female', 'girl'):
-                sex = 'female'
-        person = {'name': 'Unknown', 'age': age}
-        if sex:
-            person['sex'] = sex
-        unnamed.append(person)
-    # merge unnamed into people_pre if present, else create
-    if unnamed:
-        if 'people_pre' in out:
-            out['people_pre'].extend(unnamed)
-        else:
-            out['people_pre'] = unnamed
-
-    # simple counts of killed/dead/ injured / missing
-    def find_int(patterns):
-        vals = []
-        for pat in patterns:
-            for m in re.finditer(pat, text, flags=re.IGNORECASE):
-                try:
-                    v = int(m.group(1))
-                    vals.append(v)
-                except Exception:
-                    continue
-        return vals
-
-    killed = find_int([r"\b(killed)\s+(\d+)\b", r"\b(\d+)\s+killed\b", r"\b(\d+)\s+dead\b"])
-    injured = find_int([r"\b(\d+)\s+injured\b", r"(\d+)\s+hurt\b"])
-    # fallback patterns: "one person died" (try to map words to numbers for 1..5)
-    word_map = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5}
-    for w, n in word_map.items():
-        if re.search(rf"\b{w}\b\s+(?:people\s+)?(?:died|dead|killed)\b", text, flags=re.IGNORECASE):
-            killed.append(n)
-
-    if killed:
-        out['num_fatalities_pre'] = max(killed)
-    if injured:
-        out['num_injured_pre'] = max(injured)
-
-    # rescue teams (look for common tokens)
-    rescue_tokens = [r"Search and Rescue", r"SAR\b", r"RCMP\b", r"police\b", r"Fire Department", r"EMS\b"]
-    rescues = set()
-    for t in rescue_tokens:
-        for m in re.finditer(t, text, flags=re.IGNORECASE):
-            rescues.add(m.group(0).strip())
-    if rescues:
-        out['rescue_teams_pre'] = list(rescues)
-
-    # area / park heuristics: look for patterns like 'in the X Recreation Area' or 'at X Park'
-    area_m = re.search(r"\b(?:in|at)\s+([A-Z][\w\s'\-]{3,80}?(?:Area|Park|Recreation|Range|Provincial))", text)
-    if area_m:
-        out['area_pre'] = area_m.group(1).strip()
-
-    # gazetteer-based matches (load a small local gazetteer)
-    # gazetteer-based matches (load a small local gazetteer) - optional via config
-    if GAZETTEER_ENABLED:
-        try:
-            gaz_path = Path(__file__).parent / 'data' / 'gazetteer_mountains.json'
-            if gaz_path.exists():
-                import json as _json
-                with open(gaz_path, 'r', encoding='utf-8') as _g:
-                    gaz = _json.load(_g)
-                for name in gaz:
-                    if re.search(rf"\b{re.escape(name)}\b", text, flags=re.IGNORECASE):
-                        out.setdefault('gazetteer_matches', []).append(name)
-        except Exception:
-            pass
-
-    # short summary candidate: first 1-2 sentences
-    sents = re.split(r"(?<=[\.\!\?])\s+", text.strip())
-    if sents:
-        out['lead_sentences'] = sents[:2]
-
-    # route difficulty heuristics (YDS grades, alpine grades, V grades, class ratings)
-    diff_patterns = [r"\b5\.[0-9]{1,2}[a-z]?\b", r"\bclass\s+[1-5]\b", r"\bV\d+\b", r"\bGrade\s+[I|II|III|IV|V|VI]\b"]
-    diffs = []
-    for p in diff_patterns:
-        for m in re.finditer(p, text, flags=re.IGNORECASE):
-            diffs.append(m.group(0))
-    if diffs:
-        out['route_difficulty_pre'] = list(dict.fromkeys(diffs))
-
-    # route type keywords
-    route_types = []
-    for kw in ['rappel', 'rappelling', 'couloir', 'gully', 'ridge', 'spire', 'face', 'wall', 'crag', 'route', 'descent', 'ascent']:
-        if re.search(rf"\b{kw}\b", text, flags=re.IGNORECASE):
-            route_types.append(kw)
-    if route_types:
-        out['route_types_pre'] = list(dict.fromkeys(route_types))
-
-    # equipment tokens
-    equipment = []
-    for kw in ['piton', 'anchor', 'pitons', 'harness', 'leash', 'carabiner', 'bolt', 'gps', 'rope', 'piton']:
-        if re.search(rf"\b{kw}\b", text, flags=re.IGNORECASE):
-            equipment.append(kw)
-    if equipment:
-        out['equipment_pre'] = list(dict.fromkeys(equipment))
-
-    # fall height extraction (e.g., '400 feet (122 meters)' or '400-foot')
-    m = re.search(r"(\d{2,5})\s*(?:feet|ft|foot)\b", text, flags=re.IGNORECASE)
-    if m:
-        try:
-            feet = int(m.group(1))
-            meters = round(feet * 0.3048, 1)
-            out['fall_height_feet_pre'] = feet
-            out['fall_height_meters_pre'] = meters
-        except Exception:
-            pass
-
-    return out
+# pre-extraction is provided by accident_preextract.pre_extract_fields
 
 try:
     from fetcher import extract_article_text as _extract_article_text
@@ -333,427 +148,21 @@ except Exception:
     pass
 
 
-# -------------------- LLM extraction --------------------
-
-_PROMPT = """
-System: You are a precise information extraction assistant. Return VALID JSON only, no prose, no markdown fences. Do NOT invent details.
-
-SCHEMA: Return an object containing any of the following keys (omit keys not present/confident):
-    source_url, source_name, article_title, article_date_published (YYYY-MM-DD), region, mountain_name, route_name,
-    activity_type, accident_type, accident_date (YYYY-MM-DD), accident_time_approx, num_people_involved (int),
-    num_fatalities (int), num_injured (int), num_rescued (int), people (array of objects with name, age, outcome, injuries, rescue_status, hometown),
-    rescue_teams_involved (array), response_agencies (array), rescue_method, response_difficulties, bodies_recovery_method,
-    accident_summary_text, timeline_text, quoted_dialogue (array), notable_equipment_details, local_expert_commentary,
-    family_statements, photo_urls (array), video_urls (array), related_articles_urls (array), fundraising_links (array),
-    official_reports_links (array), fall_height_meters_estimate (float), self_rescue_boolean (bool), anchor_failure_boolean (bool),
-    extraction_confidence_score (0-1 float)
-
-Guidance:
-- Use ONLY evidence present in the provided PRE-EXTRACTED and ARTICLE text. If unsure, omit the key.
-- Normalize dates to ISO format when possible; do not fabricate years.
-- Keep arrays of strings concise and canonical (e.g., 'Squamish Search and Rescue', 'Sea to Sky RCMP').
-
-PRE-EXTRACTED:
-{PRE}
-
-ARTICLE:
-{ARTICLE}
-
-Return one JSON object.
+"""
+# LLM schema/prompt and extraction moved to modules.
 """
 
-def _llm_extract(article_text: str) -> dict:
-    # Truncate extremely long pages to keep costs down but keep most relevant content
-    content = article_text[:18000]
-    pre = pre_extract_fields(article_text)
-    if not _OPENAI_AVAILABLE or _client is None:
-        logger.warning("OPENAI_API_KEY not set; skipping LLM extraction")
-        return {}
 
-    # Respect per-run OpenAI call cap if configured
-    if not can_make_call():
-        logger.warning("OpenAI call cap reached (remaining=0); skipping LLM extraction")
-        return {}
-
-    # Build the prompt with PRE-EXTRACTED
-    prompt = _PROMPT.format(PRE=json.dumps(pre, ensure_ascii=False, indent=2), ARTICLE=content)
-    resp = _client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0,
-        messages=[
-            {"role": "system", "content": "You are a precise JSON-only extractor."},
-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
-        ],
-    )
-    # record that we made one OpenAI call
-    try:
-        record_call(1)
-    except Exception:
-        pass
-    raw = resp.choices[0].message.content.strip()
-
-    # try parse JSON; if fails, try a repair pass
-    try:
-        obj = json.loads(raw)
-        if isinstance(obj, dict):
-            return obj
-    except Exception:
-        pass
-
-    # simple recovery attempt: ask for pure JSON only
-    repair = _client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": "Convert the following to STRICT JSON only, no explanations:\n" + raw}
-            ]
-        }],
-    )
-    try:
-        # record the repair call as well
-        try:
-            record_call(1)
-        except Exception:
-            pass
-    except Exception:
-        pass
-    try:
-        return json.loads(repair.choices[0].message.content.strip())
-    except Exception:
-        return {}
-
-    # ------------------------------------------------------------------
-    # Secondary targeted pass: if key high-value fields are missing, ask the
-    # model to extract only those missing fields (strict JSON-only). This
-    # reduces hallucination risk by constraining the model and focuses on
-    # high-value fields like dates, counts, and locations.
-    try:
-        # conservative list of high-value fields we want to ensure are present
-        high_value = [
-            'accident_date', 'accident_time_approx', 'mountain_name', 'route_name',
-            'num_people_involved', 'num_fatalities', 'num_injured', 'num_rescued'
-        ]
-        # ensure obj is a dict
-        if not isinstance(obj, dict):
-            obj = {}
-
-        missing = [k for k in high_value if not obj.get(k)]
-        # only attempt extra extraction when there are missing fields and we
-        # still have budget for another OpenAI call
-        if missing and can_make_call():
-            followup_prompt = (
-                "You previously returned this JSON extraction:\n" + json.dumps(obj, ensure_ascii=False, indent=2)
-                + "\n\nUsing ONLY the PRE-EXTRACTED and ARTICLE content provided earlier,\n"
-                + "extract the following fields if you can find direct evidence: " + ", ".join(missing)
-                + ". Return STRICT JSON containing ONLY those keys present with evidence.\n"
-                + "Do NOT invent dates or years; normalize dates to ISO (YYYY-MM-DD or full ISO if time present).\n"
-                + "If there is no reliable evidence for a field, omit it from the JSON.\n"
-            )
-            try:
-                follow = _client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    temperature=0,
-                    messages=[
-                        {"role": "system", "content": "You are a precise JSON-only extractor."},
-                        {"role": "user", "content": [{"type": "text", "text": _PROMPT.format(PRE=json.dumps(pre, ensure_ascii=False, indent=2), ARTICLE=content) + "\n\nFollow-up request:\n" + followup_prompt}]}
-                    ],
-                )
-                try:
-                    record_call(1)
-                except Exception:
-                    pass
-                follow_raw = follow.choices[0].message.content.strip()
-                try:
-                    follow_obj = json.loads(follow_raw)
-                    if isinstance(follow_obj, dict):
-                        # merge conservatively: only set fields that are present in follow_obj
-                        for k, v in follow_obj.items():
-                            # prefer existing non-empty values; otherwise set
-                            if not obj.get(k) and v is not None:
-                                obj[k] = v
-                except Exception:
-                    # if parsing fails, attempt a strict-repair pass
-                    try:
-                        repair2 = _client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            temperature=0,
-                            messages=[{
-                                "role": "user",
-                                "content": [{"type": "text", "text": "Convert the following to STRICT JSON only, no explanations:\n" + follow_raw}]
-                            }],
-                        )
-                        try:
-                            record_call(1)
-                        except Exception:
-                            pass
-                        f2 = json.loads(repair2.choices[0].message.content.strip())
-                        if isinstance(f2, dict):
-                            for k, v in f2.items():
-                                if not obj.get(k) and v is not None:
-                                    obj[k] = v
-                    except Exception:
-                        pass
-            except Exception:
-                # if follow-up call fails, continue silently
-                pass
-    except Exception:
-        pass
-
-
-def _postprocess(obj: dict) -> dict:
-    """Validate and normalize a broad accident extraction schema.
-
-    This function is conservative: unknown keys are passed through only when they match
-    expected types. Dates are normalized to ISO when possible; numeric strings are cast.
-    """
-    # Define expected types for the extended schema
-    expected = {
-        # basic metadata
-        'source_url': str,
-        'source_name': str,
-        'article_title': str,
-        'article_date_published': str,
-        # location/activity
-        'region': str,
-        'mountain_name': str,
-        'route_name': str,
-        'activity_type': str,
-        'accident_type': str,
-        'accident_date': str,
-        'accident_time_approx': str,
-        # numeric counts
-        'num_people_involved': int,
-        'num_fatalities': int,
-        'num_injured': int,
-        'num_rescued': int,
-        # people array
-        'people': list,
-        # arrays of strings
-        'rescue_teams_involved': list,
-        'response_agencies': list,
-        'quoted_dialogue': list,
-        'photo_urls': list,
-        'video_urls': list,
-        'related_articles_urls': list,
-        'fundraising_links': list,
-        'official_reports_links': list,
-        # other strings
-        'rescue_method': str,
-        'response_difficulties': str,
-        'bodies_recovery_method': str,
-        'accident_summary_text': str,
-        'timeline_text': str,
-        'notable_equipment_details': str,
-        'local_expert_commentary': str,
-        'family_statements': str,
-        # floats / booleans
-        'fall_height_meters_estimate': float,
-        'self_rescue_boolean': bool,
-        'anchor_failure_boolean': bool,
-        'extraction_confidence_score': float,
-    }
-
-    out: dict = {}
-
-    def keep_str(k, v):
-        if isinstance(v, str) and v.strip():
-            out[k] = v.strip()
-
-    def keep_int(k, v):
-        if isinstance(v, int):
-            out[k] = v
-        elif isinstance(v, str):
-            try:
-                out[k] = int(v.strip())
-            except Exception:
-                pass
-        elif isinstance(v, float):
-            out[k] = int(v)
-
-    def keep_float(k, v):
-        if isinstance(v, (int, float)):
-            out[k] = float(v)
-        elif isinstance(v, str):
-            try:
-                out[k] = float(v.strip())
-            except Exception:
-                pass
-
-    def keep_bool(k, v):
-        if isinstance(v, bool):
-            out[k] = v
-        elif isinstance(v, str):
-            if v.strip().lower() in ('true', 'yes', '1'):
-                out[k] = True
-            elif v.strip().lower() in ('false', 'no', '0'):
-                out[k] = False
-
-    def keep_list_of_str(k, v):
-        if isinstance(v, list):
-            vals = [s.strip() for s in v if isinstance(s, str) and s.strip()]
-            if vals:
-                # dedupe preserve order
-                seen = set()
-                uniq = []
-                for s in vals:
-                    if s not in seen:
-                        seen.add(s)
-                        uniq.append(s)
-                out[k] = uniq
-        elif isinstance(v, str) and v.strip():
-            out[k] = [v.strip()]
-
-    # iterate keys in the provided object and try to coerce/validate
-    for k, v in obj.items():
-        if k not in expected:
-            # allow passthrough for a few safe keys if they look like strings
-            if isinstance(v, str) and v.strip():
-                out[k] = v.strip()
-            continue
-        typ = expected[k]
-        if typ is str:
-            keep_str(k, v)
-        elif typ is int:
-            keep_int(k, v)
-        elif typ is float:
-            keep_float(k, v)
-        elif typ is bool:
-            keep_bool(k, v)
-        elif typ is list:
-            if k == 'people' and isinstance(v, list):
-                people_out = []
-                for person in v:
-                    if not isinstance(person, dict):
-                        continue
-                    p = {}
-                    # minimal person fields we accept
-                    if 'name' in person and isinstance(person['name'], str) and person['name'].strip():
-                        p['name'] = person['name'].strip()
-                    if 'age' in person:
-                        try:
-                            p['age'] = int(person['age'])
-                        except Exception:
-                            pass
-                    if 'outcome' in person and isinstance(person['outcome'], str):
-                        p['outcome'] = person['outcome'].strip()
-                    if 'injuries' in person and isinstance(person['injuries'], str):
-                        p['injuries'] = person['injuries'].strip()
-                    if p:
-                        people_out.append(p)
-                if people_out:
-                    out['people'] = people_out
-            else:
-                keep_list_of_str(k, v)
-
-    # Normalize date fields if present
-    for dk in ('article_date_published', 'accident_date', 'missing_since', 'recovery_date'):
-        if dk in out:
-            iso = _iso_or_none(out[dk])
-            if iso:
-                out[dk] = iso
-            else:
-                # drop invalid date
-                out.pop(dk, None)
-
-    # Validate extraction_confidence_score in 0..1
-    if 'extraction_confidence_score' in out:
-        try:
-            v = float(out['extraction_confidence_score'])
-            if 0.0 <= v <= 1.0:
-                out['extraction_confidence_score'] = v
-            else:
-                out.pop('extraction_confidence_score', None)
-        except Exception:
-            out.pop('extraction_confidence_score', None)
-
-    # some light logical checks
-    if out.get('num_fatalities') is not None and out.get('num_people_involved') is not None:
-        if out['num_fatalities'] > out['num_people_involved']:
-            logger.warning('⚠️  num_fatalities > num_people_involved; leaving values but check source')
-
-    # prefer gazetteer matches if present in pre-extracted fields
-    # If the LLM returned a generic mountain name, but we have a gazetteer match, prefer the gazetteer
-    try:
-        if 'gazetteer_matches' in obj and obj['gazetteer_matches'] and 'mountain_name' not in out:
-            out['mountain_name'] = obj['gazetteer_matches'][0]
-        if 'gazetteer_matches' in obj and obj['gazetteer_matches'] and 'region' not in out:
-            # try to use the gazetteer first item as a fallback for region
-            out.setdefault('region', obj['gazetteer_matches'][0])
-    except Exception:
-        pass
-
-    return out
-
-
-def compute_confidence(pre: dict, llm: dict) -> float:
-    """Heuristic confidence based on overlap of deterministic pre-extracted evidence and LLM output.
-
-    Scores from 0.0 to 1.0.
-    - +0.25 if a date in pre_dates matches accident_date/article_date
-    - +0.2 if gazetteer_matches contains mountain_name
-    - +0.2 if fall_height_feet_pre correlates within 15% of fall_height_meters_estimate
-    - +0.15 if num_fatalities_pre (derived) matches num_fatalities
-    - +0.2 if people_pre items corroborate people names/ages in llm
-    Cap at 1.0
-    """
-    score = 0.0
-    try:
-        # dates
-        pd = pre.get('pre_dates', [])
-        for d in pd:
-            iso = _iso_or_none(d)
-            if iso and (llm.get('accident_date') == iso or llm.get('article_date_published') == iso):
-                score += 0.25
-                break
-
-        # gazetteer
-        if pre.get('gazetteer_matches'):
-            g0 = pre['gazetteer_matches'][0]
-            if llm.get('mountain_name') and g0.lower() in llm.get('mountain_name', '').lower():
-                score += 0.2
-
-        # fall height correlation
-        if 'fall_height_feet_pre' in pre and 'fall_height_meters_estimate' in llm:
-            try:
-                feet = float(pre['fall_height_feet_pre'])
-                meters_est = float(llm['fall_height_meters_estimate'])
-                meters_from_feet = feet * 0.3048
-                if abs(meters_from_feet - meters_est) / max(meters_est, 1.0) < 0.15:
-                    score += 0.2
-            except Exception:
-                pass
-
-        # fatalities
-        if 'num_fatalities_pre' in pre and 'num_fatalities' in llm:
-            try:
-                if int(pre['num_fatalities_pre']) == int(llm['num_fatalities']):
-                    score += 0.15
-            except Exception:
-                pass
-
-        # people corroboration (simple name/age overlap)
-        if 'people_pre' in pre and 'people' in llm:
-            pre_people = pre['people_pre']
-            ll_people = llm['people'] if isinstance(llm['people'], list) else []
-            matches = 0
-            for p in pre_people:
-                for q in ll_people:
-                    if 'age' in p and 'age' in q and int(p['age']) == int(q.get('age', -1)):
-                        matches += 1
-                        break
-            if matches >= 1:
-                score += 0.2
-    except Exception:
-        pass
-
-    return min(1.0, round(score, 2))
+# post-processing and confidence are provided by accident_postprocess
 
 
 # -------------------- public API --------------------
 
-def extract_accident_info(url: str, out_dir: str | Path | None = None, base_output: str = "artifacts") -> str:
+def extract_accident_info(
+    url: str,
+    out_dir: str | Path | None = None,
+    base_output: str = "artifacts",
+) -> str:
     """
     Extracts meta information from a page and writes accident_info.json.
     Returns the json path.
@@ -765,9 +174,11 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
         out_path.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Reading article text: {url}")
-    # Ensure Playwright nav timeout is capped at 25s via env variable handling
+    # Ensure Playwright nav timeout is capped at 25s via env var handling
     try:
-        os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = str(min(int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','25000')), 25000))
+        os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = str(
+            min(int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS', '25000')), 25000)
+        )
     except Exception:
         os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = '25000'
     # fetch article text and final navigated URL
@@ -788,7 +199,7 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
 
     logger.info("LLM extracting structured accident info")
     pre = pre_extract_fields(text)
-    obj = _llm_extract(text)
+    obj = llm_extract(text)
     # attach the pre-extracted dict into the object for downstream use
     if isinstance(obj, dict):
         obj['gazetteer_matches'] = pre.get('gazetteer_matches', [])
@@ -796,7 +207,12 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
 
     # compute deterministic confidence and prefer it if model did not provide one
     try:
-        if 'extraction_confidence_score' not in info or not isinstance(info.get('extraction_confidence_score'), float):
+        if (
+            'extraction_confidence_score' not in info
+            or not isinstance(
+                info.get('extraction_confidence_score'), float
+            )
+        ):
             c = compute_confidence(pre, info)
             info['extraction_confidence_score'] = c
         else:
@@ -804,13 +220,16 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
             model_score = float(info.get('extraction_confidence_score'))
             det = compute_confidence(pre, info)
             # weighted average favoring deterministic evidence slightly
-            info['extraction_confidence_score'] = round((0.4 * model_score + 0.6 * det), 2)
+            info['extraction_confidence_score'] = round(
+                (0.4 * model_score + 0.6 * det), 2
+            )
     except Exception:
         pass
 
-    # attach minimal source context and include the cleaned article text for traceability
-    # include both the focused article_text and the full scraped text (before trimming) for traceability
-    # Build payload but ensure the canonical URL passed to the function wins
+    # attach minimal source context and include the cleaned article text for
+    # traceability; include both the focused article_text and the full scraped
+    # text (before trimming). Build payload but ensure the canonical URL passed
+    # to the function wins
     payload = {
         "extracted_at": now_pst_iso(),
         "article_text": text,
@@ -826,7 +245,10 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
     # optional DB write (opt-in via env var)
     try:
         # WRITE_TO_DB: legacy behaviour to persist into sqlite DB
-        if os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes') and upsert_artifact is not None:
+        if (
+            os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes')
+            and upsert_artifact is not None
+        ):
             try:
                 init_db() if init_db is not None else None
             except Exception:
@@ -837,7 +259,10 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
                 logger.warning(f"Failed to write artifact to DB: {e}")
 
         # WRITE_TO_DRIVE: opt-in shorthand to write CSV + upload to Drive without using sqlite
-        if os.getenv('WRITE_TO_DRIVE', 'false').lower() in ('1', 'true', 'yes') and sync_artifact_to_drive is not None:
+        if (
+            os.getenv('WRITE_TO_DRIVE', 'false').lower() in ('1', 'true', 'yes')
+            and sync_artifact_to_drive is not None
+        ):
             try:
                 sync_artifact_to_drive(payload)
             except Exception as e:
@@ -849,10 +274,15 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
     return json_path
 
 
-def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_output: str = "artifacts") -> list[str]:
-    """Process a list of URLs in batches. For each batch we perform deterministic pre-extraction and then
-    make a single LLM call that returns a JSON array of extraction objects. We then postprocess and write
-    per-URL `accident_info.json` files under artifacts.
+def batch_extract_accident_info(
+    urls: list[str],
+    batch_size: int = 3,
+    base_output: str = "artifacts",
+) -> list[str]:
+    """Process a list of URLs in batches. For each batch we perform
+    deterministic pre-extraction and then make a single LLM call that returns
+    a JSON array of extraction objects. We then postprocess and write per-URL
+    `accident_info.json` files under artifacts.
 
     Returns list of written json paths.
     """
@@ -869,10 +299,15 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             try:
                 od = _ensure_outdir(u, base_output)
             except Exception:
-                od = Path(base_output) / _slugify(urlparse(u).netloc.replace('www.', '')) / datetime.now().strftime('%Y%m%d_%H%M%S')
+                od = (
+                    Path(base_output)
+                    / _slugify(urlparse(u).netloc.replace('www.', ''))
+                    / datetime.now().strftime('%Y%m%d_%H%M%S')
+                )
                 od.mkdir(parents=True, exist_ok=True)
             out_dirs.append(od)
-            # extract text deterministically; accept either (full, focused) or (full, focused, final_url)
+            # extract text deterministically; accept either (full, focused)
+            # or (full, focused, final_url)
             res = _extract_article_text(u)
             if isinstance(res, tuple) and len(res) == 3:
                 full_text, focused, final_u = res
@@ -890,7 +325,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             final_urls.append(final_u or u)
             pre = pre_extract_fields(focused)
             pre_list.append(pre)
-        # Build a batched prompt asking for an array of JSON objects
+    # Build a batched prompt asking for an array of JSON objects
         items = []
         for idx, u in enumerate(batch):
             items.append({
@@ -899,15 +334,18 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                 'article': texts[idx][:12000]
             })
 
-        # Compose prompt: SCHEMA + list of items
+    # Compose prompt: SCHEMA + list of items
         payload = {
             'items': items
         }
 
         # Respect call caps and availability
-        if not _OPENAI_AVAILABLE or _client is None:
-            logger.warning('OPENAI_API_KEY not set; skipping batch LLM extraction')
-            # still write minimal artifacts with scraped_full_text and pre_extracted
+        if not _OPENAI_AVAILABLE:
+            logger.warning(
+                'OPENAI_API_KEY not set; skipping batch LLM extraction'
+            )
+            # still write minimal artifacts with scraped_full_text and
+            # pre_extracted
             for idx, u in enumerate(batch):
                 payload_write = {
                     'extracted_at': now_pst_iso(),
@@ -915,8 +353,13 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                     'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                     'pre_extracted': pre_list[idx]
                 }
-                # ensure canonical URL is preserved (LLM output should not override)
-                payload_write['source_url'] = final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u
+                # ensure canonical URL is preserved (LLM output should not
+                # override)
+                payload_write['source_url'] = (
+                    final_urls[idx]
+                    if idx < len(final_urls) and final_urls[idx]
+                    else u
+                )
                 p = str(out_dirs[idx] / 'accident_info.json')
                 with open(p, 'w', encoding='utf-8') as f:
                     json.dump(payload_write, f, indent=2, ensure_ascii=False)
@@ -925,14 +368,22 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
 
         # check call cap before attempting the batch call
         if not can_make_call():
-            logger.warning('OpenAI call cap reached; skipping LLM batch for this group')
+            logger.warning(
+                'OpenAI call cap reached; skipping LLM batch for this group'
+            )
             for idx, u in enumerate(batch):
                 payload_write = {
-                    'source_url': final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u,
+                    'source_url': (
+                        final_urls[idx]
+                        if idx < len(final_urls) and final_urls[idx]
+                        else u
+                    ),
                     'extracted_at': now_pst_iso(),
                     'article_text': texts[idx],
-                    'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
-                    'pre_extracted': pre_list[idx]
+                    'scraped_full_text': (
+                        full_texts[idx] if idx < len(full_texts) else ''
+                    ),
+                    'pre_extracted': pre_list[idx],
                 }
                 p = str(out_dirs[idx] / 'accident_info.json')
                 with open(p, 'w', encoding='utf-8') as f:
@@ -941,16 +392,24 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             continue
 
         # single LLM call for the batch
-        prompt = "System: Return a JSON array with one extraction object per item. Use the provided PRE-EXTRACTED and ARTICLE fields.\n"
+        prompt = (
+            "System: Return a JSON array with one extraction object per item. "
+            "Use the provided PRE-EXTRACTED and ARTICLE fields.\n"
+        )
         prompt += json.dumps(payload, ensure_ascii=False)
 
         try:
-            resp = _client.chat.completions.create(
-                model='gpt-4o-mini',
-                temperature=0,
+            resp = _chat_create(
+                model=ACCIDENT_INFO_MODEL,
                 messages=[
-                    {'role': 'system', 'content': 'You are a precise JSON-only extractor.'},
-                    {'role': 'user', 'content': [{'type': 'text', 'text': prompt}]}
+                    {
+                        'role': 'system',
+                        'content': 'You are a precise JSON-only extractor.',
+                    },
+                    {
+                        'role': 'user',
+                        'content': [{'type': 'text', 'text': prompt}],
+                    },
                 ],
             )
         except Exception as e:
@@ -959,7 +418,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
 
         raw = resp.choices[0].message.content.strip()
         arr = None
-        # First, try direct parse
+    # First, try direct parse
         try:
             candidate = json.loads(raw)
             if isinstance(candidate, list):
@@ -993,12 +452,26 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
 
             # repair pass
             if arr is None:
-                repair = _client.chat.completions.create(
-                    model='gpt-4o-mini',
-                    temperature=0,
-                    messages=[{'role': 'user', 'content': [{'type': 'text', 'text': 'Convert the following to a JSON array only:\n' + raw}]}]
+                repair = _chat_create(
+                    model=ACCIDENT_INFO_MODEL,
+                    messages=[
+                        {
+                            'role': 'user',
+                            'content': [
+                                {
+                                    'type': 'text',
+                                    'text': (
+                                        'Convert the following to a JSON '
+                                        'array only:\n' + raw
+                                    ),
+                                }
+                            ],
+                        }
+                    ],
                 )
-                arr = json.loads(repair.choices[0].message.content.strip())
+                arr = json.loads(
+                    repair.choices[0].message.content.strip()
+                )
 
             # record that we used one LLM call for the batch
             try:
@@ -1010,10 +483,14 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             continue
 
         # postprocess and write per-url artifacts
-        # If response length doesn't match batch length, be conservative: iterate up to min length
+    # If response length doesn't match batch length, be conservative:
+    # iterate up to min length
         min_len = min(len(arr), len(batch))
         if len(arr) != len(batch):
-            logger.warning(f'LLM returned {len(arr)} items for batch of {len(batch)}; aligning to {min_len} items')
+            logger.warning(
+                f'LLM returned {len(arr)} items for batch of {len(batch)}; '
+                f'aligning to {min_len} items'
+            )
 
         for idx in range(min_len):
             out_obj = arr[idx]
@@ -1031,7 +508,8 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                 'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                 **info
             }
-            # Force canonical source_url from the batch URL (prevent LLM override)
+            # Force canonical source_url from the batch URL (prevent LLM
+            # override)
             payload_write['source_url'] = batch[idx]
             p = str(out_dirs[idx] / 'accident_info.json')
             with open(p, 'w', encoding='utf-8') as f:
@@ -1039,15 +517,22 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             written.append(p)
             # optional DB write for batch items
             try:
-                if os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes') and upsert_artifact is not None:
+                if (
+                    os.getenv('WRITE_TO_DB', 'false').lower()
+                    in ('1', 'true', 'yes')
+                    and upsert_artifact is not None
+                ):
                     try:
-                        init_db() if init_db is not None else None
+                        if init_db is not None:
+                            init_db()
                     except Exception:
                         pass
                     try:
                         upsert_artifact(payload_write)
                     except Exception as e:
-                        logger.warning(f"Failed to write batch artifact to DB: {e}")
+                        logger.warning(
+                            f"Failed to write batch artifact to DB: {e}"
+                        )
             except Exception:
                 pass
 

@@ -108,7 +108,7 @@ def _chat_vision_json(client: OpenAI, model: str, image_data_url: str) -> str:
         "    \"technical_rating_est\": string|null,\n"
         "    \"incline_degrees\": {\n"
         "      \"glacier_lower\": string|null,\n"
-        "      \"approach_camp3_to_squirrel\": string|null,\n"
+        "      \"approach_to_high_camp\": string|null,\n"
         "      \"ridge_section\": string|null\n"
         "    },\n"
         "    \"glacier_condition_est\": string|null,\n"
@@ -152,7 +152,9 @@ def analyze_conditions(image_path: str) -> Dict[str, Any]:
                 "route_character": None,
                 "objective_hazards": None,
                 "technical_rating_est": None,
-                "incline_degrees": {"glacier_lower": None, "approach_camp3_to_squirrel": None, "ridge_section": None},
+                "incline_degrees": {"glacier_lower": None, 
+                "approach_to_high_camp": None, 
+                "ridge_section": None},
                 "glacier_condition_est": None,
                 "approach_mode": None,
                 "retreat_options": None
