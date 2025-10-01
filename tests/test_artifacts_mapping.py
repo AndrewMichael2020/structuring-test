@@ -6,7 +6,7 @@ import csv
 # Ensure repo root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from store_artifacts import sync_artifact_to_drive, CANONICAL_ARTIFACT_FIELDS
+from store_artifacts import force_rebuild_artifacts_csv, CANONICAL_ARTIFACT_FIELDS
 
 
 def _flatten_field_candidates(key: str):
@@ -25,10 +25,10 @@ def test_rebuild_and_map_fields():
     assert sample.exists(), 'sample artifact missing'
     doc = json.loads(sample.read_text(encoding='utf-8'))
 
-    # Force a rebuild and Drive sync (will overwrite local CSV)
-    sync_artifact_to_drive(doc)
+    # Force a rebuild of the CSV from on-disk artifacts
+    csv_path = force_rebuild_artifacts_csv()
 
-    csvp = Path('artifacts/artifacts.csv')
+    csvp = Path(csv_path)
     assert csvp.exists(), 'artifacts/artifacts.csv not written'
 
     with csvp.open('r', encoding='utf-8') as fh:
