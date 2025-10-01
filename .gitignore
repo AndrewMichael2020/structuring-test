@@ -30,6 +30,9 @@ artifacts/
 # Local environment file (store secrets like OPENAI_API_KEY here)
 .env
 
+# Local Google/Drive credentials (tokens, persisted file ids)
+.credentials/
+
 # Database files
 *.db
 artifacts.db
