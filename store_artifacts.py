@@ -2,95 +2,11 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Iterable
 import json
 import os
-import sqlite3
 import glob
-import io
 import csv
 
-Query = None
-
-
-class _InMemoryDB:
-    def __init__(self, path: str | Path = None):
-        self._data = []
-
-    def insert(self, doc: dict):
-        self._data.append(doc)
-
-    def update(self, doc: dict, cond):
-        # cond is a tuple ('source_url', value) expected; support simple equality
-        if callable(cond):
-            for i, d in enumerate(self._data):
-                if cond(d):
-                    self._data[i].update(doc)
-        else:
-            # best-effort: find matching source_url
-            key = 'source_url'
-            val = None
-            try:
-                val = cond
-            except Exception:
-                val = None
-            if val is not None:
-                for i, d in enumerate(self._data):
-                    if d.get(key) == val:
-                        self._data[i].update(doc)
-
-    def search(self, predicate):
-        # predicate may be a callable or a dict-like simple equality
-        if predicate is None:
-            return list(self._data)
-        if callable(predicate):
-            return [d for d in self._data if predicate(d)]
-        # fallback: if predicate is dict, match every k==v
-        if isinstance(predicate, dict):
-            out = []
-            for d in self._data:
-                ok = True
-                for k, v in predicate.items():
-                    if d.get(k) != v:
-                        ok = False
-                        break
-                if ok:
-                    out.append(d)
-            return out
-        return []
-
-    def all(self):
-        return list(self._data)
-
-    def close(self):
-        self._data = []
-
-
-_DB: Optional[object] = None
-_DB_TYPE: Optional[str] = None  # 'sqlite' or 'memory'
-
-# In-process guard to avoid repeated Drive uploads during a single run.
-# Several callers (per-artifact sync, DB upsert, and a final force-rebuild) may
-# invoke the upload logic; we want to perform at most one Drive upload per
-# process invocation to avoid duplicate files.
-_DRIVE_UPLOAD_DONE = False
-
-# Drive sync globals (lazy)
-_DRIVE_STORAGE = None
-_DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
-_DRIVE_FILENAME = os.environ.get("DRIVE_ARTIFACTS_FILENAME", "artifacts.csv")
+# Local CSV path - this is now the primary output
 _LOCAL_CSV_PATH = os.environ.get("ARTIFACTS_CSV_LOCAL_PATH", "artifacts/artifacts.csv")
-
-# Configurable expansion sizes (environment variables, defaults kept small to avoid huge spreadsheets)
-try:
-    ARTIFACTS_MAX_PEOPLE = max(1, int(os.getenv('ARTIFACTS_MAX_PEOPLE', '5')))
-except Exception:
-    ARTIFACTS_MAX_PEOPLE = 5
-try:
-    ARTIFACTS_MAX_TEAMS = max(1, int(os.getenv('ARTIFACTS_MAX_TEAMS', '5')))
-except Exception:
-    ARTIFACTS_MAX_TEAMS = 5
-try:
-    ARTIFACTS_MAX_URLS = max(1, int(os.getenv('ARTIFACTS_MAX_URLS', '5')))
-except Exception:
-    ARTIFACTS_MAX_URLS = 5
 
 # Canonical artifact fields we prefer to expose as top-level CSV columns.
 # Order here will be used as the CSV header order (others appended afterwards).
@@ -145,38 +61,6 @@ CANONICAL_ARTIFACT_FIELDS = [
     "anchor_failure_boolean",
     "extraction_confidence_score",
 ]
-
-
-def _drive_configured() -> bool:
-    # Consider Drive configured if either a service account key or an
-    # OAuth client secret is present (or an existing token file is present).
-    if os.environ.get("DRIVE_SERVICE_ACCOUNT_JSON"):
-        return True
-    if os.environ.get("DRIVE_OAUTH_CLIENT_SECRETS"):
-        return True
-    # Also check for an existing token file path in env
-    token = os.environ.get("DRIVE_OAUTH_TOKEN_PATH", ".credentials/drive_token.json")
-    if os.path.exists(token):
-        return True
-    return False
-
-
-def _get_drive_storage():
-    """Lazily build a DriveStorage instance from env var. Returns None if not configured."""
-    global _DRIVE_STORAGE
-    if not _drive_configured():
-        return None
-    if _DRIVE_STORAGE is not None:
-        return _DRIVE_STORAGE
-    try:
-        # import here to avoid hard dependency unless feature used
-        from drive_storage import DriveStorage
-
-        # DriveStorage.from_env will read .env and token files as needed
-        _DRIVE_STORAGE = DriveStorage.from_env()
-        return _DRIVE_STORAGE
-    except Exception:
-        return None
 
 
 def _read_local_csv(path: str) -> Dict[str, Dict]:
@@ -236,15 +120,15 @@ def _write_local_csv(path: str, rows: Iterable[Dict[str, object]], fieldnames: I
             writer.writerow(out_row)
 
 
-def _maybe_sync_to_drive(rec: Dict[str, Any]):
-    """If Drive is configured, update the local CSV and upload/replace on Drive.
+def _rebuild_local_csv():
+    """Rebuild the local CSV from on-disk artifact JSON files.
 
     This function is best-effort and will not raise on errors.
     """
     # Rebuild the canonical CSV from on-disk artifact JSON files so columns
-    # reliably map to JSON fields. This write must happen deterministically on
-    # every run so local `artifacts/artifacts.csv` always reflects on-disk JSON.
+    # reliably map to JSON fields.
     existing = {}
+    
     # helper to choose newest by extracted_at/ts
     def _is_newer(ts_new: str | None, ts_old: str | None) -> bool:
         if not ts_old:
@@ -264,6 +148,7 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
                 return str(ts_new) > str(ts_old)
             except Exception:
                 return False
+    
     try:
         # look for all accident_info.json files under artifacts/*/*
         for path in glob.glob(os.path.join('artifacts', '*', '*', 'accident_info.json')):
@@ -296,40 +181,10 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
         # fallback to reading the existing CSV if glob fails
         existing = _read_local_csv(_LOCAL_CSV_PATH)
 
-    # Normalize record into CSV-friendly row by flattening the artifact payload
-    artifact = rec.get('artifact') if isinstance(rec.get('artifact'), dict) else {}
-    # Compose a canonical row where keys align with CANONICAL_ARTIFACT_FIELDS
-    row = {}
-    for k in CANONICAL_ARTIFACT_FIELDS:
-        # prefer artifact-level values, fall back to top-level rec metadata
-        if isinstance(artifact.get(k), (list, dict)):
-            row[k] = artifact.get(k)
-        elif k in artifact and artifact.get(k) is not None:
-            row[k] = artifact.get(k)
-        else:
-            # some canonical columns come from rec metadata
-            if k == 'extraction_confidence_score':
-                row[k] = rec.get('extraction_confidence_score') or artifact.get(k)
-            elif k == 'mountain_name':
-                row[k] = rec.get('mountain_name') or artifact.get(k)
-            else:
-                row[k] = artifact.get(k)
+    if not existing:
+        # No artifacts to write; skip CSV creation
+        return
 
-    # add some metadata columns not present in the canonical artifact list
-    row['domain'] = rec.get('domain')
-    row['source_url'] = rec.get('source_url')
-    row['ts'] = rec.get('ts')
-
-    # keep a raw artifact backup
-    try:
-        row['artifact_json'] = json.dumps(artifact, ensure_ascii=False)
-    except Exception:
-        row['artifact_json'] = ''
-
-    # update/insert our incoming record
-    existing[row.get('source_url')] = row
-    rows = list(existing.values())
-    # At this point `existing` contains rows keyed by source_url.
     # Build a stable set of fieldnames: canonical fields first, then any extras
     all_keys = set()
     for r in existing.values():
@@ -337,13 +192,8 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
     # Exclude metadata keys from extras to avoid duplication later
     metadata_keys = {'domain', 'source_url', 'ts', 'artifact_json'}
     extras = [k for k in sorted(all_keys) if k not in CANONICAL_ARTIFACT_FIELDS and k not in metadata_keys]
-    fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras
 
-    # Instead of expanding into many numbered columns, serialize nested lists/dicts
-    # as JSON strings (the CSV writer will do this) and also provide simple count
-    # columns (people_count, rescue_teams_count, and counts for URL lists).
-    # Build CSV fieldnames here so the local CSV is written with metadata and
-    # count columns even when Drive upload is not configured.
+    # Build CSV fieldnames with metadata and count columns
     csv_fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras + ['domain', 'source_url', 'ts', 'artifact_json']
     csv_fieldnames += ['people_count', 'rescue_teams_count']
     for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
@@ -389,306 +239,68 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
         except Exception:
             pass
 
-    # Now attempt to upload to Drive if available. Use an in-process guard so
-    # multiple callers don't upload more than once per run.
-    global _DRIVE_UPLOAD_DONE
-    try:
-        ds = _get_drive_storage()
-        if not ds:
-            return
-        if _DRIVE_UPLOAD_DONE:
-            # already uploaded in this process; skip Drive upload
-            return
-
-        # csv_fieldnames already constructed above (csv_fieldnames). If for some reason
-        # it's missing, fall back to the previously computed 'fieldnames'.
-        if 'csv_fieldnames' not in locals():
-            csv_fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras + ['domain', 'source_url', 'ts', 'artifact_json']
-            csv_fieldnames += ['people_count', 'rescue_teams_count']
-            for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
-                csv_fieldnames.append(f'{key}_count')
-
-        try:
-            # Build explicit rows that match csv_fieldnames and stringify nested values.
-            # This guarantees Drive receives a CSV with the expected columns (not only artifact_json).
-            drive_rows = []
-            for r in normalized_rows:
-                dr = {}
-                for k in csv_fieldnames:
-                    v = r.get(k)
-                    # Normalize long text fields to single-line
-                    if isinstance(v, str) and k in ("article_text", "scraped_full_text"):
-                        dr[k] = " ".join(v.split())
-                    elif isinstance(v, (list, dict)):
-                        try:
-                            dr[k] = json.dumps(v, ensure_ascii=False)
-                        except Exception:
-                            dr[k] = str(v)
-                    elif v is None:
-                        dr[k] = ""
-                    else:
-                        dr[k] = v
-                drive_rows.append(dr)
-
-            # upload the explicit drive_rows so flattened columns appear in Drive
-            try:
-                try:
-                    res = ds.save_artifacts_csv(drive_rows, drive_filename=_DRIVE_FILENAME, fieldnames=csv_fieldnames)
-                except TypeError:
-                    # fallback for older versions of DriveStorage that don't accept fieldnames
-                    res = ds.save_artifacts_csv(drive_rows, drive_filename=_DRIVE_FILENAME)
-                # mark that we performed an upload during this process
-                _DRIVE_UPLOAD_DONE = True
-            except Exception:
-                # ensure res is always present for downstream logging
-                res = {}
-        except Exception:
-            # building or uploading drive_rows failed; ensure downstream code has res
-            res = {}
-
-        # Also ensure the local CSV file uses the same canonical columns
-        try:
-            _write_local_csv(_LOCAL_CSV_PATH, normalized_rows, fieldnames=csv_fieldnames)
-        except Exception:
-            pass
-
-        # Try to surface useful feedback to the developer: file id and webViewLink when present
-        try:
-            fid = res.get('id') if isinstance(res, dict) else None
-            link = res.get('webViewLink') if isinstance(res, dict) else None
-            if fid or link:
-                print(f"[drive] uploaded artifacts CSV -> id={fid} link={link}")
-        except Exception:
-            pass
-
-        # Also upload full artifacts JSON (list of artifact objects) so consumers can get full payloads
-        try:
-            # prepare docs (we want the 'artifact' field from each row map where present)
-            # Upload JSON that mirrors the CSV rows so each JSON field corresponds to a CSV column.
-            docs = [r for r in rows]
-            json_res = ds.save_artifacts_json(docs, drive_filename=os.environ.get('DRIVE_ARTIFACTS_JSON_FILENAME', 'artifacts.json'))
-            try:
-                jf = json_res.get('id') if isinstance(json_res, dict) else None
-                jlink = json_res.get('webViewLink') if isinstance(json_res, dict) else None
-                if jf or jlink:
-                    print(f"[drive] uploaded artifacts JSON -> id={jf} link={jlink}")
-            except Exception:
-                pass
-        except Exception:
-            # non-fatal
-            pass
-    except Exception:
-        # swallow Drive upload errors as well
-        return
-
-
-def sync_artifact_to_drive(doc: Dict[str, Any]) -> None:
-    """Public helper: sync a single artifact document to the local CSV mirror and Drive.
-
-    This is a thin wrapper around the internal _maybe_sync_to_drive and intended for
-    use by other modules that want Drive-only behavior without initializing the DB.
-    """
-    try:
-        rec = {
-            'source_url': doc.get('source_url'),
-            'domain': doc.get('source_url', '').split('/')[2] if '/' in doc.get('source_url', '') else doc.get('source_url', ''),
-            'ts': doc.get('extracted_at'),
-            'mountain_name': doc.get('mountain_name'),
-            'num_fatalities': doc.get('num_fatalities'),
-            'extraction_confidence_score': doc.get('extraction_confidence_score'),
-            'artifact': doc,
-        }
-        rec = {k: v for k, v in rec.items() if v is not None}
-        _maybe_sync_to_drive(rec)
-    except Exception:
-        # best-effort only
-        return
-
 
 def init_db(path: str | Path = "artifacts.db", backend: str | None = None) -> None:
-    """Initialize the DB backend.
-
-    Backend selection: prefer sqlite; fall back to in-memory if sqlite can't be created.
+    """Initialize the DB backend (no-op for local CSV-only mode).
+    
+    This function is kept for backwards compatibility but does nothing
+    in the local CSV-only mode.
     """
-    global _DB, _DB_TYPE
-    # Always prefer sqlite backend for persistence. Fall back to in-memory DB only if sqlite fails.
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        conn = sqlite3.connect(str(p))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        try:
-            cur.execute("PRAGMA journal_mode=WAL;")
-        except Exception:
-            pass
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS artifacts (
-                source_url TEXT PRIMARY KEY,
-                domain TEXT,
-                ts TEXT,
-                mountain_name TEXT,
-                num_fatalities INTEGER,
-                extraction_confidence_score REAL,
-                artifact_json TEXT
-            )
-            """
-        )
-        conn.commit()
-        _DB = conn
-        _DB_TYPE = 'sqlite'
-        return
-    except Exception:
-        # fallback to in-memory DB
-        _DB = _InMemoryDB(path)
-        _DB_TYPE = 'memory'
+    # No-op: DB functionality has been removed
+    pass
 
 
 def close_db():
-    global _DB
-    global _DB_TYPE
-    if _DB is not None:
-        try:
-            if _DB_TYPE == 'sqlite':
-                _DB.close()
-            else:
-                _DB.close()
-        except Exception:
-            pass
-        _DB = None
-        _DB_TYPE = None
+    """Close the DB (no-op for local CSV-only mode)."""
+    # No-op: DB functionality has been removed
+    pass
 
 
 def upsert_artifact(doc: Dict[str, Any]) -> None:
-    """Upsert an artifact document using source_url as the key.
-
+    """Upsert an artifact document (no-op for local CSV-only mode).
+    
+    In local CSV mode, artifacts are written directly to disk as JSON files
+    and the CSV is rebuilt from those files on demand.
+    
     doc: the artifact payload (should contain 'source_url' and 'extracted_at')
     """
-    global _DB
-    if _DB is None:
-        # lazy init default location
-        init_db()
-    src = doc.get('source_url')
-    if not src:
-        raise ValueError('artifact must contain source_url')
-    # write full artifact under 'artifact' field for future-proofing
-    rec = {
-        'source_url': src,
-        'domain': doc.get('source_url', '').split('/')[2] if '/' in doc.get('source_url', '') else doc.get('source_url', ''),
-        'ts': doc.get('extracted_at'),
-        'mountain_name': doc.get('mountain_name'),
-        'num_fatalities': doc.get('num_fatalities'),
-        'extraction_confidence_score': doc.get('extraction_confidence_score'),
-        'artifact': doc,
-    }
-    # remove None values for cleanliness
-    rec = {k: v for k, v in rec.items() if v is not None}
-    # upsert by source_url
-    try:
-        if _DB_TYPE == 'sqlite':
-            # insert or replace
-            cur = _DB.cursor()
-            cur.execute(
-                """INSERT OR REPLACE INTO artifacts
-                (source_url, domain, ts, mountain_name, num_fatalities, extraction_confidence_score, artifact_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    rec.get('source_url'),
-                    rec.get('domain'),
-                    rec.get('ts'),
-                    rec.get('mountain_name'),
-                    rec.get('num_fatalities'),
-                    rec.get('extraction_confidence_score'),
-                    json.dumps(rec.get('artifact')),
-                ),
-            )
-            _DB.commit()
-            # try to sync to Drive asynchronously (best-effort)
-            try:
-                _maybe_sync_to_drive(rec)
-            except Exception:
-                pass
-        else:
-            # in-memory backend
-            existing = _DB.search(lambda d: d.get('source_url') == src)
-            if existing:
-                _DB.update(rec, lambda d: d.get('source_url') == src)
-            else:
-                _DB.insert(rec)
-            try:
-                _maybe_sync_to_drive(rec)
-            except Exception:
-                pass
-    except Exception:
-        # best-effort insert
-        try:
-            _DB.insert(rec)
-        except Exception:
-            pass
+    # No-op: DB functionality has been removed
+    # The CSV will be rebuilt from on-disk JSON artifacts when needed
+    pass
 
 
 def query_artifacts(filters: Dict[str, Any] | None = None):
-    global _DB
-    if _DB is None:
-        init_db()
-    if not filters:
-        # No filters: return all rows for sqlite (or limited to protect memory)
-        if _DB_TYPE == 'sqlite':
-            cur = _DB.cursor()
-            cur.execute("SELECT * FROM artifacts")
-            rows = cur.fetchall()
-            out = []
-            for r in rows:
-                d = dict(r)
-                if d.get('artifact_json'):
-                    try:
-                        d['artifact'] = json.loads(d['artifact_json'])
-                    except Exception:
-                        d['artifact'] = d.get('artifact_json')
-                out.append(d)
-            return out
-        else:
-            return _DB.all()
-    # sqlite backend: build simple WHERE clause using equality checks
-    if _DB_TYPE == 'sqlite':
-        cols = []
-        vals = []
-        for k, v in filters.items():
-            cols.append(f"{k} = ?")
-            vals.append(v)
-        where = ' AND '.join(cols)
-        cur = _DB.cursor()
-        q = f"SELECT * FROM artifacts WHERE {where}"
-        cur.execute(q, tuple(vals))
-        rows = cur.fetchall()
-        out = []
-        for r in rows:
-            d = dict(r)
-            # parse artifact_json back to object if present
-            if d.get('artifact_json'):
-                try:
-                    d['artifact'] = json.loads(d['artifact_json'])
-                except Exception:
-                    d['artifact'] = d.get('artifact_json')
-            out.append(d)
-        return out
-
-    # in-memory filter: simple dict match
-    def match(d):
-        for k, v in filters.items():
-            if d.get(k) != v:
-                return False
-        return True
-
-    return _DB.search(match)
+    """Query artifacts (no-op for local CSV-only mode, returns empty list).
+    
+    In local CSV mode, you should read artifacts from the CSV file directly
+    or from the on-disk JSON artifacts.
+    """
+    # No-op: DB functionality has been removed
+    return []
 
 
-def force_rebuild_and_upload_artifacts_csv():
-    """Force a deterministic rebuild of the artifacts CSV and upload to Drive (if configured)."""
+def force_rebuild_artifacts_csv(local_csv_path: str = None) -> str:
+    """Force a deterministic rebuild of the artifacts CSV from on-disk JSON artifacts.
+    
+    Args:
+        local_csv_path: Optional path for the CSV file. Defaults to artifacts/artifacts.csv
+        
+    Returns:
+        Path to the generated CSV file
+    """
+    global _LOCAL_CSV_PATH
+    if local_csv_path:
+        _LOCAL_CSV_PATH = local_csv_path
+    
     try:
-        # This is equivalent to calling _maybe_sync_to_drive with a dummy rec, which triggers a full scan and upload
-        _maybe_sync_to_drive({})
+        _rebuild_local_csv()
     except Exception:
         pass
+    
+    return _LOCAL_CSV_PATH
+
+
+# Backwards compatibility alias
+def force_rebuild_and_upload_artifacts_csv():
+    """Force a deterministic rebuild of the artifacts CSV (Drive upload removed)."""
+    return force_rebuild_artifacts_csv()
