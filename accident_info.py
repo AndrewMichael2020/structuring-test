@@ -36,6 +36,43 @@ except Exception:
 from bs4 import BeautifulSoup
 from pathlib import Path
 
+# Attempt to load a .env file in the project directory so os.getenv sees local keys (e.g., OPENAI_API_KEY)
+try:
+    # prefer python-dotenv if available
+    from dotenv import load_dotenv  # type: ignore
+    # load .env located next to this file, then fall back to working dir
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(dotenv_path=str(env_path), override=False)
+    else:
+        # fall back to default search behavior
+        load_dotenv(override=False)
+except Exception:
+    # If python-dotenv isn't installed, try a minimal manual parse of a .env file so
+    # local development still works without the dependency.
+    try:
+        env_path = Path(__file__).parent / '.env'
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as _f:
+                for line in _f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' not in line:
+                        continue
+                    k, v = line.split('=', 1)
+                    k = k.strip()
+                    v = v.strip()
+                    # remove surrounding quotes if present
+                    if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                        v = v[1:-1]
+                    # only set if not already present in env
+                    if k and not os.getenv(k):
+                        os.environ[k] = v
+    except Exception:
+        # best-effort only
+        pass
+
 try:
     # optional date normalization helper
     from dateutil import parser as dateparser  # type: ignore
@@ -287,19 +324,30 @@ def pre_extract_fields(text: str) -> dict:
 
     return out
 
-def _extract_article_text(url: str, timeout: int = 25) -> tuple[str, str]:
+def _extract_article_text(url: str, timeout: int = 25) -> tuple[str, str, str]:
+    """Return (full_text, focused_text, final_url).
+
+    final_url is the canonical URL after redirects (from requests or Playwright).
+    """
     headers = {
         "User-Agent": "Mozilla/5.0 (GitHub Codespaces; +metadata-extractor)"
     }
+    resp = None
+    html = ""
+    final_url = url  # Initialize final_url with the original URL
     try:
         if get_with_retries is not None:
             resp = get_with_retries(url, timeout=timeout, headers=headers)
             html = resp.text
+            final_url = getattr(resp, 'url', url) or url
         else:
-            html = requests.get(url, headers=headers, timeout=timeout).text
+            r = requests.get(url, headers=headers, timeout=timeout)
+            resp = r
+            html = r.text
+            final_url = getattr(r, 'url', url) or url
     except Exception as e:
         print(f"[WARN] Failed to fetch article HTML for {url}: {e}")
-        return ""
+        return "", "", url
     # quick bot-block detection: some CDNs return a 403 page or short 'Access Denied' HTML
     soup = BeautifulSoup(html, "html.parser")
     body_text = ' '.join([t.strip() for t in soup.stripped_strings])
@@ -338,12 +386,17 @@ def _extract_article_text(url: str, timeout: int = 25) -> tuple[str, str]:
                 except Exception:
                     pass
                 rendered = page.content()
+                try:
+                    final_url = page.url or final_url
+                except Exception:
+                    pass
                 browser.close()
                 soup = BeautifulSoup(rendered, 'html.parser')
         except Exception as e:
             print(f"[WARN] Playwright fallback failed: {e}")
             # if Playwright isn't available or failed, continue with original soup
             soup = BeautifulSoup(html, "html.parser")
+            final_url = getattr(resp, 'url', url) or url
 
     # Prefer article containers; also try to find a title and use only its nearby paragraphs
     candidates = []
@@ -564,7 +617,7 @@ def _extract_article_text(url: str, timeout: int = 25) -> tuple[str, str]:
     text = " ".join(final)
     focused_text = _clean_text_blocks(text)
     full_text = _clean_text_blocks(full_text)
-    return full_text, focused_text
+    return full_text, focused_text, final_url
 
 
 # -------------------- LLM extraction --------------------
@@ -925,7 +978,8 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
         os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = str(min(int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','25000')), 25000))
     except Exception:
         os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = '25000'
-    full_text, text = _extract_article_text(url)
+    # fetch article text and final navigated URL
+    full_text, text, final_url = _extract_article_text(url)
 
     print("[INFO] LLM extracting structured accident info")
     pre = pre_extract_fields(text)
@@ -951,12 +1005,13 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
 
     # attach minimal source context and include the cleaned article text for traceability
     # include both the focused article_text and the full scraped text (before trimming) for traceability
+    # Build payload but ensure the canonical URL passed to the function wins
     payload = {
-        "source_url": url,
         "extracted_at": _now_pst_iso(),
         "article_text": text,
         "scraped_full_text": full_text,
-        **info
+        **info,
+        "source_url": final_url or url  # Use final_url when available
     }
 
     json_path = str(out_path / "accident_info.json")
@@ -997,6 +1052,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
         texts = []
         full_texts = []
         out_dirs = []
+        final_urls = []
         for u in batch:
             try:
                 od = _ensure_outdir(u, base_output)
@@ -1005,9 +1061,10 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                 od.mkdir(parents=True, exist_ok=True)
             out_dirs.append(od)
             # extract text deterministically
-            full_text, focused = _extract_article_text(u)
+            full_text, focused, final_u = _extract_article_text(u)
             texts.append(focused)
             full_texts.append(full_text)
+            final_urls.append(final_u or u)
             pre = pre_extract_fields(focused)
             pre_list.append(pre)
         # Build a batched prompt asking for an array of JSON objects
@@ -1031,12 +1088,13 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             # still write minimal artifacts with scraped_full_text and pre_extracted
             for idx, u in enumerate(batch):
                 payload_write = {
-                    'source_url': u,
                     'extracted_at': _now_pst_iso(),
                     'article_text': texts[idx],
                     'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                     'pre_extracted': pre_list[idx]
                 }
+                # ensure canonical URL is preserved (LLM output should not override)
+                payload_write['source_url'] = final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u
                 p = str(out_dirs[idx] / 'accident_info.json')
                 with open(p, 'w', encoding='utf-8') as f:
                     json.dump(payload_write, f, indent=2, ensure_ascii=False)
@@ -1048,7 +1106,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             print('[WARN] OpenAI call cap reached; skipping LLM batch for this group')
             for idx, u in enumerate(batch):
                 payload_write = {
-                    'source_url': u,
+                    'source_url': final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u,
                     'extracted_at': _now_pst_iso(),
                     'article_text': texts[idx],
                     'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
@@ -1146,12 +1204,13 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             except Exception:
                 pass
             payload_write = {
-                'source_url': batch[idx],
                 'extracted_at': _now_pst_iso(),
                 'article_text': texts[idx],
                 'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                 **info
             }
+            # Force canonical source_url from the batch URL (prevent LLM override)
+            payload_write['source_url'] = batch[idx]
             p = str(out_dirs[idx] / 'accident_info.json')
             with open(p, 'w', encoding='utf-8') as f:
                 json.dump(payload_write, f, indent=2, ensure_ascii=False)

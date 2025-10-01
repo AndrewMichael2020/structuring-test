@@ -25,7 +25,7 @@ def test_migration_dry_run_and_import(tmp_path):
     p = domain / 'accident_info.json'
     p.write_text(json.dumps(artifact), encoding='utf-8')
 
-    db_path = tmp_path / 'artifacts_db.json'
+    db_path = tmp_path / 'artifacts.db'
 
     # dry-run should not create DB file
     r = run_script(['--artifacts-dir', str(base), '--db-path', str(db_path), '--dry-run'])
@@ -33,10 +33,10 @@ def test_migration_dry_run_and_import(tmp_path):
     assert '[DRY]' in r.stdout or 'Would import' in r.stdout
     assert not db_path.exists()
 
-    # real run should create DB file (if TinyDB installed) or in-memory file
+    # real run should create the sqlite DB file
     r2 = run_script(['--artifacts-dir', str(base), '--db-path', str(db_path)])
     assert r2.returncode == 0
-    # DB file may or may not exist depending on TinyDB presence; however the script prints summary
+    assert db_path.exists()
     assert 'Imported' in r2.stdout
 
     # run again with --skip-existing; this should skip the already-imported artifact

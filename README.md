@@ -185,29 +185,74 @@ License
 --------
 MIT
 
-DB migration (one-time)
------------------------
-If you've been running the pipeline and collected artifacts under `artifacts/<domain>/<timestamp>/`, you can import those JSON artifacts into the optional TinyDB ledger for easier querying and analysis.
+DB import (one-time)
+---------------------
+If you've been running the pipeline and collected artifacts under `artifacts/<domain>/<timestamp>/`, you can import those JSON artifacts into the SQLite artifacts DB for easier querying and analysis.
 
 Dry-run preview (no DB writes):
 
 ```bash
-python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json --dry-run
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts.db --dry-run
 ```
 
-Import into DB (writes to `artifacts_db.json` by default):
+Import into DB (writes to `artifacts.db` by default):
 
 ```bash
-python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts.db
 ```
 
 Skip already-imported artifacts by source_url:
 
 ```bash
-python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts_db.json --skip-existing
+python scripts/import_artifacts_to_db.py --artifacts-dir artifacts --db-path artifacts.db --skip-existing
 ```
 
 Notes and best practices
 - For large imports prefer running the script on a machine with enough disk I/O and consider making a backup copy of the DB file before a large import.
-- TinyDB is convenient for local exploration but not intended for heavy concurrent writes — for production you may prefer SQLite or MongoDB.
+- SQLite is robust for local persistence and supports SQL querying and JSON functions; it's the recommended local ledger for this project.
 - The script avoids creating a DB file during `--dry-run` so you can preview actions safely.
+
+Quick note: the SQLite artifacts DB
+----------------------------------
+This repo also maintains a local SQLite ledger at `artifacts.db` (created when you import artifacts or run the pipeline with `--write-db`). The DB schema stores a canonical `source_url` (primary key), a `domain` column, timestamps and several commonly-queried fields plus a full `artifact_json` text blob for traceability.
+
+Common sqlite queries
+----------------------
+- List recent artifacts (show domain and timestamp):
+
+```sql
+SELECT domain, json_extract(artifact_json, '$.extracted_at') AS extracted_at,
+	   json_extract(artifact_json, '$.article_title') AS title
+FROM artifacts
+ORDER BY extracted_at DESC
+LIMIT 50;
+```
+
+- Find non-HTTP source_url rows (these may need normalization):
+
+```sql
+SELECT source_url, domain
+FROM artifacts
+WHERE source_url NOT LIKE 'http%' OR domain = '' OR domain IS NULL;
+```
+
+- Quick domain counts:
+
+```sql
+SELECT domain, COUNT(*) AS cnt FROM artifacts GROUP BY domain ORDER BY cnt DESC;
+```
+
+You can open the DB with the `sqlite3` CLI:
+
+```bash
+sqlite3 artifacts.db
+.headers on
+.mode column
+SELECT * FROM artifacts LIMIT 5;
+```
+
+If you want a human-readable JSON dump of a single artifact row:
+
+```bash
+sqlite3 -json artifacts.db "SELECT artifact_json FROM artifacts WHERE source_url = 'https://example.com/article'" | jq .
+```

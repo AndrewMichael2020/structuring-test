@@ -16,6 +16,7 @@ from image_ocr import enrich_json_with_conditions
 from pathlib import Path
 from accident_info import extract_accident_info, batch_extract_accident_info
 from urllib.parse import urlparse
+from store_artifacts import init_db
 
 def ts_print(*args, **kwargs):
     t = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -29,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('--urls-file', type=str, default=None,
                         help='Path to a file with URLs (one per line) to run in batched LLM mode')
     parser.add_argument('--batch-size', type=int, default=3, help='Number of URLs per LLM batch')
-    parser.add_argument('--write-db', action='store_true', help='Enable writing artifacts to the local TinyDB')
+    parser.add_argument('--write-db', action='store_true', help='Enable writing artifacts to the local artifacts DB (SQLite)')
     args = parser.parse_args()
 
     urls: List[str] = []
@@ -67,9 +68,19 @@ if __name__ == "__main__":
 
     ts_print(f"[INFO] Running mode: {mode}")
 
+    # Initialize DB early if user requested writes (cover all run modes)
+    if args.write_db or os.getenv('WRITE_TO_DB', '').lower() in ('1', 'true', 'yes'):
+        try:
+            init_db('artifacts.db', backend='sqlite')
+        except Exception:
+            pass
+        os.environ['WRITE_TO_DB'] = 'true'
+
     # If urls-file was provided, run batch LLM extraction (text-only behavior for batched LLM)
     if args.urls_file:
         if args.write_db:
+            # initialize SQLite DB for persistent artifacts and set the env var used by extraction
+            init_db('artifacts.db', backend='sqlite')
             os.environ['WRITE_TO_DB'] = 'true'
         ts_print(f'[INFO] Running batched extraction for {len(urls)} URLs with batch size {args.batch_size}')
         written = batch_extract_accident_info(urls, batch_size=args.batch_size)
@@ -101,6 +112,11 @@ if __name__ == "__main__":
             json_path = extract_and_save(url, run_ocr=False, download_images=False)
             run_dir = str(Path(json_path).parent)
             ts_print(f"[INFO] Extracting accident info for {url}")
+            # initialize DB if requested by CLI flag or env var (choose sqlite as best-practice)
+            if args.write_db or os.getenv('WRITE_TO_DB', '').lower() in ('1', 'true', 'yes'):
+                # initialize sqlite DB file and ensure WRITE_TO_DB env var is set
+                init_db('artifacts.db', backend='sqlite')
+                os.environ['WRITE_TO_DB'] = 'true'
             extract_accident_info(url, out_dir=run_dir)
 
         else:  # all
