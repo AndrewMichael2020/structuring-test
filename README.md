@@ -1,232 +1,125 @@
 # Structuring Test — news article extractor and accident metadata pipeline
 
-This project aims to **collect and structure information about underreported, under-analyzed mountain accidents** in **British Columbia, Alberta, and Washington State**. There is **no centralized ledger** for these incidents; details are scattered across local news, SAR posts, park/advisory bulletins, and social media—and they often disappear behind CDNs, redesigns, or paywalls. This repository builds a **decentralized, auditable pipeline** that pulls key facts into a lightweight ledger you can query, verify, and evolve over time.
+This project aims to collect and structure information about underreported, under-analyzed mountain accidents in British Columbia, Alberta, and Washington State. There is no centralized ledger for these incidents; details are scattered across local news, SAR posts, park/advisory bulletins, and social media—and they often disappear behind CDNs, redesigns, or paywalls. This repository builds a decentralized, auditable pipeline that pulls key facts into a lightweight ledger you can query, verify, and evolve over time.
 
-**Why this exists**
-- **Fragmented sources:** Incident details are inconsistent (names, dates, places) and easy to lose.
-- **Underreporting:** Many events never reach official statistics or formal databases.
-- **Actionable structure:** Standardized JSON fields (rescuers, area/park, trailhead, missing/recovered, ISO dates) enable analysis across publishers.
-- **Context from images:** Optional vision pass extracts conditions (e.g., cornice, crown line, debris, wind loading, helicopter/longline, RECCO) that text alone may miss.
-- **Traceability:** Each run writes `artifacts/<domain>/<timestamp>/` with inputs/outputs for reproducibility and auditing.
-- **Cost/latency discipline:** Prefers small models and fast heuristics; uses a browser fallback only when needed; enforces timeouts to avoid hangs.
+## Why this matters (value in practice)
 
-This repository contains a small pipeline that scrapes news/story web pages, extracts article text and image candidates (with filtering), runs OCR/vision and optional LLM-based extraction, and writes traceable artifacts. It was built to robustly extract structured accident metadata from diverse publisher pages while avoiding long hangs, unnecessary downloads, and runaway LLM usage.
+- Turn fleeting stories into durable facts: Headlines vanish; `artifacts/**/accident_info.json` and a canonical CSV give you a persistent, searchable record.
+- Compare across publishers: Structured fields (dates, location hints, people counts, outcomes, agencies) enable cross-source analysis—no more manual copy/paste.
+- Preserve context and traceability: Every run writes an auditable folder with inputs/outputs, so you can reproduce and review decisions.
+- Cost and speed discipline: Text-first extraction, small focused prompts, batch LLM calls where possible, and strict call caps.
+- Low ops: No database required. By default, the ledger is rebuilt deterministically from on-disk JSON into `artifacts/artifacts.csv`.
+- Model-agnostic: Models are configured in `config.json`; GPT-5-style “no temperature” models are supported seamlessly.
 
-Table of contents
-- What problem this repo solves
-- Key features and design goals
-- Architecture and components
-- Installation & dependencies
-- Configuration & environment
-- Usage (CLI and programmatic)
-- Output artifacts and format
-- Implementation details and heuristics
-- Tuning and troubleshooting
-- Testing and quality gates
-- Security and privacy
-- Contributing
-- License
+## What you get
 
-What problem this repo solves
---------------------------------
-News sites vary wildly in HTML structure, use JS protection/captcha/CDN blocks, and often include a lot of irrelevant assets (logos, thumbnails, related headlines). This project solves a focused problem: given a URL to a news/story page (often about mountain/transport accidents), reliably extract the article text and relevant image candidates, then optionally run OCR/vision and an LLM to produce structured accident metadata (areas, rescuers, recovered/missing state, dates).
+- Per-URL artifact folders: `artifacts/<domain>/<timestamp>/` with the extracted article text, structured `accident_info.json`, and optionally OCR-enriched image metadata.
+- A canonical CSV: `artifacts/artifacts.csv` rebuilt from all on-disk JSON with stable headers and auto-added count columns.
+- A batching mode: Feed a list of URLs and get per-URL JSON artifacts in one pass, with minimal artifacts even when some pages are teaser-only.
 
-Key features and design goals
---------------------------------
-- Robust HTML extraction: static-first parsing with a Playwright fallback for JS-protected pages.
-- Bounded Playwright waits: navigation timeout capped at 25s so the pipeline never waits forever.
-- Early image filtering: skip logos, affiliate images, and tiny assets before downloading to avoid mass downloads.
-- OCR + LLM optional: support local OCR fallback (pytesseract/Pillow) and optional OpenAI calls for vision/structured extraction.
-- LLM safety: lazy OpenAI init and a persistent per-run call counter to cap costs and avoid runaway API usage.
-- Traceability: artifacts contain both a focused `article_text` used for LLMs and a `scraped_full_text` cleaned trace of the full scraped paragraphs.
-- CLI run-modes: run all / text-only / ocr-only so you can control which stages are executed.
+## Quickstart
 
-Architecture and components
-------------------------------
-Major modules
-- `extract_captions.py` — collects image candidates and captions, performs HEAD checks and filtering, optionally downloads images and writes `captions.json`.
-- `image_ocr.py` — local OCR helpers and optional LLM vision enrichment; respects OpenAI call cap.
-- `accident_info.py` — extracts article text (static-first + Playwright fallback), cleans and trims it, and asks an LLM for structured accident metadata; writes `accident_info.json` including `article_text` and `scraped_full_text`.
-- `openai_call_manager.py` — small utility to persist and cap OpenAI call counts across runs.
-- `main.py` — orchestration/CLI to run extraction and enrichment in configurable modes.
+- Python 3.10+ recommended. Install dependencies from `requirements.txt`.
+- Optional: set `OPENAI_API_KEY` to enable LLM extraction; otherwise minimal artifacts are still produced.
+- Run a single URL in full mode:
+  - `python main.py "https://example.com/article" --mode all`
+- Run batched LLM extraction from a file (one-per-line or comma-separated; `#` comments allowed):
+  - `python main.py --urls-file urls.txt --mode text-only --batch-size 3`
+- Rebuild the CSV deterministically from artifacts on disk:
+  - `python -c "from store_artifacts import force_rebuild_and_upload_artifacts_csv; force_rebuild_and_upload_artifacts_csv()"`
 
-Data flow
-1. Start with a URL.
-2. `extract_captions` fetches the HTML (requests + BeautifulSoup) and collects image/caption candidates; if static fetch looks blocked it falls back to Playwright.
-3. Candidate images are filtered early by filename tokens and HEAD checks; only relevant images are downloaded.
-4. `image_ocr` optionally performs local OCR and (if enabled and allowed by call caps) LLM enrichment.
-5. `accident_info` extracts article text (prefers article container, captures title, preserves author/publish lines), builds `scraped_full_text` and a focused `article_text`, then optionally calls OpenAI for structured fields.
-6. Artifacts are written under `artifacts/<domain>/<timestamp>/` as `captions.json`, `accident_info.json`, and downloaded images.
+You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> artifacts/artifacts.csv`.
 
-Installation & dependencies
----------------------------
-This project runs under Python 3.10+ (tested in a dev container). Key dependencies are listed in `requirements.txt`.
+## What’s inside (architecture)
 
-Primary libraries used
-- requests
-- beautifulsoup4
-- playwright (for JS-rendered fallbacks)
-- pillow, pytesseract (local OCR)
-- python-dateutil (optional -- date parsing)
-- openai (optional, for LLM calls)
+- `fetcher.py` — HTML fetching and article-text extraction. Strategy:
+  1) static fetch and best-effort parsing
+  2) AMP fallback (`rel=amphtml`, `/amp`, `?outputType=amp`) when content is short/blocked
+  3) Playwright fallback (stealth + short growth wait)
+  4) readability-lxml fallback if content still looks like a teaser
+- `accident_info.py` — Orchestrates text extraction and structured metadata:
+  - Single URL: cleans text → pre-extracts hints → LLM → postprocess → write JSON.
+  - Batch mode: groups URLs; one LLM call returns an array of JSON; falls back to minimal artifacts if needed.
+  - In “all” mode the pipeline runs text analysis first, then image/OCR enrichment.
+- `accident_llm.py` — LLM wrapper (OpenAI). Respects model config and call caps; omits temperature for GPT-5-family models.
+- `accident_preextract.py` — Deterministic regex heuristics (dates, people, fall height, etc.).
+- `accident_postprocess.py` — Normalization/validation and heuristic confidence scoring.
+- `store_artifacts.py` — Rebuilds `artifacts/artifacts.csv` from on-disk JSON; adds counts and a raw `artifact_json` column; optional Drive upload.
+- `main.py` — CLI. Modes: `all`, `text-only`, `ocr-only`. Batch input via `--urls-file`.
 
-Install steps (example)
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-# If using Playwright render fallback, install browsers:
-playwright install
-```
+## Flow overview
 
-Configuration & environment
-----------------------------
-This project looks for an OpenAI API key in the `OPENAI_API_KEY` environment variable.
+1) Fetch & extract article text (robust parsing + AMP + Playwright + Readability fallbacks).
+2) Clean and focus the text (title, paragraphs, boilerplate trimming). Preserve a `scraped_full_text` for traceability.
+3) Deterministic pre-extraction (regex/gazetteer hints) to seed the LLM.
+4) LLM extraction (text-only or batch): structured JSON per story.
+5) Postprocess + confidence: consolidate types, normalize dates, compute confidence.
+6) Optional OCR: image candidates and light condition analysis.
+7) Rebuild CSV from JSON (no DB required) and optionally upload to Drive.
 
-To safely store your key locally, copy the template and create a `.env` file (this repo contains `.env.example` and `.env` is ignored by git):
+## Configuration
 
-```bash
-cp .env.example .env
-# edit .env and set OPENAI_API_KEY=sk-...
-```
+- `config.json` (and optional `config.local.json`) control models and features:
+  - `models.accident_info`: model for structured extraction (e.g., `gpt-5`).
+  - `models.ocr_vision`: model for vision/OCR enrichment.
+  - `timezone`, `gazetteer_enabled`.
+- Environment variables:
+  - `OPENAI_API_KEY` — enables LLM extraction.
+  - `MAX_OPENAI_CALLS` — caps calls via `openai_call_manager`.
+  - `PLAYWRIGHT_HEADLESS` — `true/false` for debugging; default `true`.
+  - `PLAYWRIGHT_STEALTH` — `true/false` stealth mode.
+  - `PLAYWRIGHT_NAV_TIMEOUT_MS` — navigation timeout (capped sensibly in code).
+  - Drive: set environment as per `drive_storage.py` to enable upload.
 
-Important environment variables (all optional, with defaults in code):
-- `OPENAI_API_KEY` — OpenAI API key (leave unset to skip LLM steps).
-- `PLAYWRIGHT_NAV_TIMEOUT_MS` — milliseconds for Playwright nav/wait. Code enforces a max of 25000 (25s).
-- `PLAYWRIGHT_STEALTH` — true/false, whether to add a tiny stealth/init script to the Playwright context.
-- `IRRELEVANT_TOKENS` — comma-separated tokens used to filter image filenames/URLs early (logo, affiliate, thumbnail, etc.).
-- `MAX_OPENAI_CALLS` — optional cap for how many OpenAI calls this run/session may perform.
+## Batching
 
-Model and app configuration (config.json)
-----------------------------------------
-Model selection and a few feature toggles are centralized in `config.json`, with optional overrides in `config.local.json` (git-ignored). The following keys are used by the pipeline:
+- Provide a file with URLs (one-per-line or comma-separated), with `#` comments allowed. See `urls.txt` template.
+- Run `python main.py --urls-file urls.txt --mode text-only --batch-size 3`.
+- Behavior under constraints:
+  - If the LLM client is available, the batch call parses all items.
+  - If it fails or returns fewer results, the pipeline writes minimal per-URL artifacts for the remainder (no silent drops).
+- After runs, the CSV is rebuilt from disk; a concise summary is printed.
 
-- `models.ocr_vision` — vision model used for OCR/vision enrichment (e.g., `gpt-5`).
-- `models.accident_info` — model used for structured accident extraction (e.g., `gpt-5`).
-- `timezone` — used for timestamp formatting and local time conversions.
-- `gazetteer_enabled` — enable simple gazetteer lookups during pre-extraction heuristics.
+## Outputs
 
-Notes
-- The code omits temperature for “no-temperature” models (e.g., GPT-5 family) and gracefully falls back when needed.
-- Environment variables can still override behavior where applicable; `config.local.json` lets you customize locally without changing `config.json` in git.
+- `artifacts/<domain>/<timestamp>/accident_info.json` contains:
+  - `source_url`, `extracted_at`, `article_text`, `scraped_full_text`
+  - structured fields (people counts, dates, agencies, etc.)
+  - an `extraction_confidence_score` (heuristic + optional model signal)
+- `artifacts/artifacts.csv`:
+  - Canonical fields in a stable order plus:
+    - `artifact_json` (raw JSON per row)
+    - count columns like `people_count`, `rescue_teams_count`, `*_urls_count`
 
-Usage
-------
-CLI usage (quick):
+## Operating principles
 
-```bash
-# run full pipeline (captures images, OCR, and LLM extraction)
-python main.py "https://example.com/news/article" --mode=all
+- Respect paywalls: no login or circumvention. AMP/Readability fallbacks are generic and use public HTML only.
+- Deterministic rebuilds: CSV is always derived from on-disk JSON; no DB required.
+- Cautious extraction: prompts emphasize precision and avoiding hallucination; we prefer explicit evidence in text.
 
-# text-only mode (skip downloading images/ocr)
-python main.py "https://example.com/news/article" --mode=text-only
+## Troubleshooting
 
-# ocr-only (download images + OCR but skip LLM structured extraction)
-python main.py "https://example.com/news/article" --mode=ocr-only
-```
+- “Wrote 0 artifacts” in batch mode:
+  - Ensure `OPENAI_API_KEY` is set. With the latest batch delegation, GPT-5 will be used when the key is present; otherwise minimal artifacts are still written.
+- Short/teaser outputs:
+  - Some sites serve limited content without a session. AMP/Readability/Playwright fallbacks help; if still short, the LLM will extract what is present without making up facts.
+- Playwright errors:
+  - Install browsers if needed and try `PLAYWRIGHT_HEADLESS=false` locally to debug rendering.
+- Call caps reached:
+  - `MAX_OPENAI_CALLS` controls limits; minimal artifacts are written when caps are reached.
 
-Batch processing with a URLs file
----------------------------------
-You can run the LLM extraction in batches using a file of URLs. The file can be one-URL-per-line or comma-separated, and lines starting with `#` are treated as comments. A template is provided in `urls.txt`.
+## Testing and quality
 
-Examples:
+- The suite exercises batch fallbacks (client missing, cap reached, parse mismatch), LLM wrapper repair path, postprocessing/normalization, CSV rebuild (recursive scan and counts), orchestrator basics, and pre-extract/utilities.
+- Run tests with `pytest`.
 
-```bash
-# text-only LLM extraction, batched 3 at a time
-python main.py --urls-file urls.txt --mode=text-only --batch-size 3
+## Roadmap ideas
 
-# default batch size (3) and mode
-python main.py --urls-file urls.txt
-```
+- Optional domain adapters for frequently used sources (kept out by default to remain generic).
+- Cross-source de-duplication and event clustering.
+- Enriched location normalization (gazetteer improvements) and map overlays.
+- Light UI for browsing the ledger and exporting subsets.
 
-Notes
-- Batch mode focuses on article text extraction + LLM structuring. OCR/image download is not performed in batch mode.
-- After each run, the pipeline rebuilds `artifacts/artifacts.csv` from on-disk `accident_info.json` files.
+---
 
-Programmatic usage
-```python
-from accident_info import extract_accident_info
-json_path = extract_accident_info(url, base_output='artifacts')
-```
-
-Output artifacts
-------------------
-Artifacts are written to `artifacts/<domain>/<timestamp>/` with the following files:
-- `captions.json` — list of image candidates (URL, filename, caption, heuristics)
-- `accident_info.json` — structured output including:
-	- `source_url` — original URL
-	- `extracted_at` — ISO timestamp
-	- `article_text` — focused trimmed text used for LLM extraction
-	- `scraped_full_text` — cleaned full text (title + paragraphs) for traceability
-	- any structured fields the LLM returned (e.g., `area`, `closest_municipality`, `rescuers`, `missing`, `recovered`, `missing_since`, `recovery_date`)
-- downloaded image files (if download enabled)
-
-CSV rebuild and no-DB flow
---------------------------
-- The CSV at `artifacts/artifacts.csv` is deterministically rebuilt from on-disk `artifacts/**/accident_info.json` files after each run—no SQLite required.
-- During rebuild you’ll see a concise summary printed, for example:
-
-	`[rebuild] scanned 4 artifacts; wrote 4 rows -> artifacts/artifacts.csv`
-
-- If Google Drive is configured via env (see `drive_storage.py`), the CSV upload happens best-effort once per process.
-- Programmatic rebuild (e.g., if you’ve added/edited artifacts by hand):
-
-```python
-from store_artifacts import force_rebuild_and_upload_artifacts_csv
-force_rebuild_and_upload_artifacts_csv()
-```
-
-Implementation details and heuristics
--------------------------------------
-Article extraction
-- Static-first: we fetch HTML with `requests` and try to find an `article`, `div.entry-content`, `main`, or the DOM node containing the most paragraph text.
-- Playwright fallback: if the static fetch looks blocked (403, very short body, or explicit 'Access Denied'), we fall back to Playwright and render the page headlessly. Playwright waits are capped to 25s maximum to avoid indefinite waits.
-- Title and author preservation: we try to capture an `h1`/`h2` title and preserve author/published lines detected by heuristics (e.g., lines that start with `By` followed by a capitalized name or contain `published`/`last updated`).
-- `scraped_full_text` vs `article_text`: `scraped_full_text` is the fuller cleaned text (useful for traceability and auditing). `article_text` is a focused subset used for LLM extraction to reduce cost and noise.
-
-Image extraction and filtering
-- Early filtering tokens: images whose URL or filename contains tokens like `logo`, `thumbnail`, `affiliate`, `tracking`, etc., are filtered out before download.
-- HEAD checks: before downloading images we perform a HEAD or light request to confirm content-type is an image and size exceeds a configurable minimum.
-- Size checks: tiny images (< MIN_IMG_BYTES or small dimensions) are skipped to avoid OCR on icons.
-
-LLM usage and safety
-- Lazy OpenAI init: the OpenAI client is not constructed at import time; if `OPENAI_API_KEY` is missing, LLM steps are gracefully skipped.
-- Call capping: `openai_call_manager.py` persists and enforces a per-run or per-repo cap so accidental mass requests don't happen.
-
-Cleaning & trimming heuristics
-- STOP_TOKENS and STOP_PREFIXES are used to filter obvious newsletter/signup/related-article lines.
-- Trailing related headline runs are detected by looking for 3+ short paragraphs at the end of the full text and trimming them. This threshold can be tuned for aggressiveness.
-
-Tuning and troubleshooting
----------------------------
-Common adjustments you might want to make:
-- Adjust `PLAYWRIGHT_NAV_TIMEOUT_MS` (max 25000 enforced) for slow pages.
-- Tweak `IRRELEVANT_TOKENS` to add domain-specific logo/asset tokens to reduce irrelevant downloads.
-- Make headline trimming more aggressive by reducing the tail-run threshold from 3 to 2 if you see short repeated headlines appended by the publisher.
-- If Playwright stealth causes issues for a domain, disable `PLAYWRIGHT_STEALTH`.
-
-Testing and quality gates
--------------------------
-Quick checks to run locally:
-
-```bash
-# run the main extractor on a sample URL
-python main.py "https://vancouversun.com/news/woman-dead-climbing-accident-squamish" --mode=all
-
-# inspect artifact jsons in artifacts/<domain>/<timestamp>/
-```
-
-When editing extraction heuristics, prefer small iterative runs and inspect `scraped_full_text` to avoid over-aggressive token filtering.
-
-Security and privacy
----------------------
-- Never commit secrets. `.env` is ignored by git; use `.env.example` as a template.
-- OpenAI calls can leak text to the LLM provider — review site privacy policies and redaction needs before sending sensitive content.
-
-Contributing
--------------
-Open a PR with focused changes. For scraping heuristics, include before/after sample artifacts so reviewers can verify improvements.
-
-License
---------
-MIT
+This pipeline aims to help practitioners, reporters, and researchers turn ephemeral news into durable, structured knowledge—safely, transparently, and with minimal operational load.
