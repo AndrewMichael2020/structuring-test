@@ -85,11 +85,18 @@ except Exception:
     TIMEZONE = 'America/Vancouver'
     GAZETTEER_ENABLED = False
 try:
-    from store_artifacts import upsert_artifact, init_db
+    try:
+        # prefer the DB upsert when available, but also expose a Drive-only sync helper
+        from store_artifacts import upsert_artifact, init_db, sync_artifact_to_drive
+    except Exception:
+        upsert_artifact = None
+        init_db = None
+        sync_artifact_to_drive = None
 except Exception:
     upsert_artifact = None
     init_db = None
 from openai_call_manager import can_make_call, record_call
+from time_utils import now_pst_iso, now_pst_filename_ts
 try:
     # reuse resilient fetch helper when available to avoid duplicate retry logic
     from extract_captions import get_with_retries
@@ -123,12 +130,9 @@ def _ensure_outdir(url: str, base_output: str = "artifacts") -> Path:
     domain = urlparse(url).netloc.replace("www.", "")
     # use PST / America/Los_Angeles for consistent artifact timestamps
     try:
-        if ZoneInfo is not None and TIMEZONE:
-            ts = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y%m%d_%H%M%S")
-        else:
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = now_pst_filename_ts()
     except Exception:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = now_pst_filename_ts()
     p = Path(base_output) / _slugify(domain) / ts
     p.mkdir(parents=True, exist_ok=True)
     return p
@@ -159,15 +163,7 @@ def _clean_text_blocks(txt: str) -> str:
     return txt.strip()
 
 
-def _now_pst_iso() -> str:
-    """Return current time formatted in America/Los_Angeles (PST/PDT) as an ISO string (seconds precision)."""
-    try:
-        if ZoneInfo is not None and TIMEZONE:
-            return datetime.now(ZoneInfo(TIMEZONE)).isoformat(timespec='seconds')
-    except Exception:
-        pass
-    # fallback to UTC with Z if zoneinfo not available
-    return datetime.now(timezone.utc).isoformat(timespec='seconds') + 'Z'
+# use centralized timezone helpers in `time_utils.py`
 
 
 def pre_extract_fields(text: str) -> dict:
@@ -427,6 +423,83 @@ def _llm_extract(article_text: str) -> dict:
         return json.loads(repair.choices[0].message.content.strip())
     except Exception:
         return {}
+
+    # ------------------------------------------------------------------
+    # Secondary targeted pass: if key high-value fields are missing, ask the
+    # model to extract only those missing fields (strict JSON-only). This
+    # reduces hallucination risk by constraining the model and focuses on
+    # high-value fields like dates, counts, and locations.
+    try:
+        # conservative list of high-value fields we want to ensure are present
+        high_value = [
+            'accident_date', 'accident_time_approx', 'mountain_name', 'route_name',
+            'num_people_involved', 'num_fatalities', 'num_injured', 'num_rescued'
+        ]
+        # ensure obj is a dict
+        if not isinstance(obj, dict):
+            obj = {}
+
+        missing = [k for k in high_value if not obj.get(k)]
+        # only attempt extra extraction when there are missing fields and we
+        # still have budget for another OpenAI call
+        if missing and can_make_call():
+            followup_prompt = (
+                "You previously returned this JSON extraction:\n" + json.dumps(obj, ensure_ascii=False, indent=2)
+                + "\n\nUsing ONLY the PRE-EXTRACTED and ARTICLE content provided earlier,\n"
+                + "extract the following fields if you can find direct evidence: " + ", ".join(missing)
+                + ". Return STRICT JSON containing ONLY those keys present with evidence.\n"
+                + "Do NOT invent dates or years; normalize dates to ISO (YYYY-MM-DD or full ISO if time present).\n"
+                + "If there is no reliable evidence for a field, omit it from the JSON.\n"
+            )
+            try:
+                follow = _client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    temperature=0,
+                    messages=[
+                        {"role": "system", "content": "You are a precise JSON-only extractor."},
+                        {"role": "user", "content": [{"type": "text", "text": _PROMPT.format(PRE=json.dumps(pre, ensure_ascii=False, indent=2), ARTICLE=content) + "\n\nFollow-up request:\n" + followup_prompt}]}
+                    ],
+                )
+                try:
+                    record_call(1)
+                except Exception:
+                    pass
+                follow_raw = follow.choices[0].message.content.strip()
+                try:
+                    follow_obj = json.loads(follow_raw)
+                    if isinstance(follow_obj, dict):
+                        # merge conservatively: only set fields that are present in follow_obj
+                        for k, v in follow_obj.items():
+                            # prefer existing non-empty values; otherwise set
+                            if not obj.get(k) and v is not None:
+                                obj[k] = v
+                except Exception:
+                    # if parsing fails, attempt a strict-repair pass
+                    try:
+                        repair2 = _client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            temperature=0,
+                            messages=[{
+                                "role": "user",
+                                "content": [{"type": "text", "text": "Convert the following to STRICT JSON only, no explanations:\n" + follow_raw}]
+                            }],
+                        )
+                        try:
+                            record_call(1)
+                        except Exception:
+                            pass
+                        f2 = json.loads(repair2.choices[0].message.content.strip())
+                        if isinstance(f2, dict):
+                            for k, v in f2.items():
+                                if not obj.get(k) and v is not None:
+                                    obj[k] = v
+                    except Exception:
+                        pass
+            except Exception:
+                # if follow-up call fails, continue silently
+                pass
+    except Exception:
+        pass
 
 
 def _postprocess(obj: dict) -> dict:
@@ -739,7 +812,7 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
     # include both the focused article_text and the full scraped text (before trimming) for traceability
     # Build payload but ensure the canonical URL passed to the function wins
     payload = {
-        "extracted_at": _now_pst_iso(),
+        "extracted_at": now_pst_iso(),
         "article_text": text,
         "scraped_full_text": full_text,
         **info,
@@ -752,6 +825,7 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
 
     # optional DB write (opt-in via env var)
     try:
+        # WRITE_TO_DB: legacy behaviour to persist into sqlite DB
         if os.getenv('WRITE_TO_DB', 'false').lower() in ('1', 'true', 'yes') and upsert_artifact is not None:
             try:
                 init_db() if init_db is not None else None
@@ -761,6 +835,13 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
                 upsert_artifact(payload)
             except Exception as e:
                 logger.warning(f"Failed to write artifact to DB: {e}")
+
+        # WRITE_TO_DRIVE: opt-in shorthand to write CSV + upload to Drive without using sqlite
+        if os.getenv('WRITE_TO_DRIVE', 'false').lower() in ('1', 'true', 'yes') and sync_artifact_to_drive is not None:
+            try:
+                sync_artifact_to_drive(payload)
+            except Exception as e:
+                logger.warning(f"Failed to sync artifact to Drive: {e}")
     except Exception:
         pass
 
@@ -829,7 +910,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             # still write minimal artifacts with scraped_full_text and pre_extracted
             for idx, u in enumerate(batch):
                 payload_write = {
-                    'extracted_at': _now_pst_iso(),
+                    'extracted_at': now_pst_iso(),
                     'article_text': texts[idx],
                     'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                     'pre_extracted': pre_list[idx]
@@ -848,7 +929,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             for idx, u in enumerate(batch):
                 payload_write = {
                     'source_url': final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u,
-                    'extracted_at': _now_pst_iso(),
+                    'extracted_at': now_pst_iso(),
                     'article_text': texts[idx],
                     'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                     'pre_extracted': pre_list[idx]
@@ -945,7 +1026,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             except Exception:
                 pass
             payload_write = {
-                'extracted_at': _now_pst_iso(),
+                'extracted_at': now_pst_iso(),
                 'article_text': texts[idx],
                 'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                 **info

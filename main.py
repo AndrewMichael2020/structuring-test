@@ -16,7 +16,7 @@ from image_ocr import enrich_json_with_conditions
 from pathlib import Path
 from accident_info import extract_accident_info, batch_extract_accident_info
 from urllib.parse import urlparse
-from store_artifacts import init_db
+from store_artifacts import init_db, force_rebuild_and_upload_artifacts_csv
 from logging_config import configure_logging
 
 # configure module-level logger; main() will configure root logging
@@ -50,6 +50,7 @@ if __name__ == "__main__":
                         help='Path to a file with URLs (one per line) to run in batched LLM mode')
     parser.add_argument('--batch-size', type=int, default=3, help='Number of URLs per LLM batch')
     parser.add_argument('--write-db', action='store_true', help='Enable writing artifacts to the local artifacts DB (SQLite)')
+    parser.add_argument('--write-drive', action='store_true', help='Upload artifacts CSV and JSON to Google Drive (requires Drive env vars and auth)')
     args = parser.parse_args()
 
     urls: List[str] = []
@@ -94,9 +95,15 @@ if __name__ == "__main__":
         except Exception:
             pass
         os.environ['WRITE_TO_DB'] = 'true'
+    # Enable Drive sync when requested via CLI flag
+    if args.write_drive or os.getenv('WRITE_TO_DRIVE', '').lower() in ('1', 'true', 'yes'):
+        os.environ['WRITE_TO_DRIVE'] = 'true'
 
     # If urls-file was provided, run batch LLM extraction (text-only behavior for batched LLM)
     if args.urls_file:
+        # ensure DRIVE writing is enabled for batched mode when requested
+        if args.write_drive:
+            os.environ['WRITE_TO_DRIVE'] = 'true'
         if args.write_db:
             # initialize SQLite DB for persistent artifacts and set the env var used by extraction
             init_db('artifacts.db', backend='sqlite')
@@ -137,6 +144,8 @@ if __name__ == "__main__":
                 init_db('artifacts.db', backend='sqlite')
                 os.environ['WRITE_TO_DB'] = 'true'
             extract_accident_info(url, out_dir=run_dir)
+            # Always force CSV rebuild and Drive upload after extraction
+            force_rebuild_and_upload_artifacts_csv()
 
         else:  # all
             json_path = extract_and_save(url, run_ocr=True, download_images=True)
@@ -145,3 +154,5 @@ if __name__ == "__main__":
             run_dir = str(Path(json_path).parent)
             ts_print(f"[INFO] Extracting accident info for {url}")
             extract_accident_info(url, out_dir=run_dir)
+            # Always force CSV rebuild and Drive upload after extraction
+            force_rebuild_and_upload_artifacts_csv()
