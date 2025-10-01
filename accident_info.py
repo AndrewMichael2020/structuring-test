@@ -24,17 +24,15 @@ import os
 import re
 import json
 import sys
-import time
 import hashlib
-import requests
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 try:
     from zoneinfo import ZoneInfo
 except Exception:
     ZoneInfo = None
-from bs4 import BeautifulSoup
 from pathlib import Path
+import logging
 
 # Attempt to load a .env file in the project directory so os.getenv sees local keys (e.g., OPENAI_API_KEY)
 try:
@@ -91,7 +89,7 @@ try:
 except Exception:
     upsert_artifact = None
     init_db = None
-from openai_call_manager import can_make_call, record_call, remaining
+from openai_call_manager import can_make_call, record_call
 try:
     # reuse resilient fetch helper when available to avoid duplicate retry logic
     from extract_captions import get_with_retries
@@ -311,7 +309,6 @@ def pre_extract_fields(text: str) -> dict:
         out['equipment_pre'] = list(dict.fromkeys(equipment))
 
     # fall height extraction (e.g., '400 feet (122 meters)' or '400-foot')
-    fh = None
     m = re.search(r"(\d{2,5})\s*(?:feet|ft|foot)\b", text, flags=re.IGNORECASE)
     if m:
         try:
@@ -324,300 +321,20 @@ def pre_extract_fields(text: str) -> dict:
 
     return out
 
-def _extract_article_text(url: str, timeout: int = 25) -> tuple[str, str, str]:
-    """Return (full_text, focused_text, final_url).
-
-    final_url is the canonical URL after redirects (from requests or Playwright).
-    """
-    headers = {
-        "User-Agent": "Mozilla/5.0 (GitHub Codespaces; +metadata-extractor)"
-    }
-    resp = None
-    html = ""
-    final_url = url  # Initialize final_url with the original URL
-    try:
-        if get_with_retries is not None:
-            resp = get_with_retries(url, timeout=timeout, headers=headers)
-            html = resp.text
-            final_url = getattr(resp, 'url', url) or url
-        else:
-            r = requests.get(url, headers=headers, timeout=timeout)
-            resp = r
-            html = r.text
-            final_url = getattr(r, 'url', url) or url
-    except Exception as e:
-        print(f"[WARN] Failed to fetch article HTML for {url}: {e}")
+try:
+    from fetcher import extract_article_text as _extract_article_text
+except Exception:
+    # fallback: provide a minimal wrapper that returns empty strings so tests that import
+    # this module don't break if fetcher can't be imported (e.g., missing deps)
+    def _extract_article_text(url: str, timeout: int = 25):
         return "", "", url
-    # quick bot-block detection: some CDNs return a 403 page or short 'Access Denied' HTML
-    soup = BeautifulSoup(html, "html.parser")
-    body_text = ' '.join([t.strip() for t in soup.stripped_strings])
-    if (resp is not None and getattr(resp, 'status_code', None) == 403) or len(body_text) < 100 or 'access denied' in body_text.lower() or '403 forbidden' in body_text.lower():
-        # fallback to Playwright-rendered extraction when site uses JS protection (Akamai/Postmedia etc.)
-        try:
-            from playwright.sync_api import sync_playwright
-            print(f"[INFO] Static fetch appears blocked (status={getattr(resp,'status_code',None)}). Falling back to Playwright for {url}")
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
-                context = browser.new_context(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36', viewport={'width':1200,'height':800}, extra_http_headers={'referer': url})
-                try:
-                    if PLAYWRIGHT_STEALTH:
-                        context.add_init_script("() => { Object.defineProperty(navigator, 'webdriver', {get: () => false}); }")
-                except Exception:
-                    pass
-                page = context.new_page()
-                page.set_default_navigation_timeout(int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','60000')))
-                try:
-                    page.goto(url, timeout=int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','60000')), wait_until='domcontentloaded')
-                    try:
-                        page.wait_for_load_state('networkidle', timeout=int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','60000')))
-                    except Exception:
-                        pass
-                except Exception as e:
-                    print(f"[WARN] Playwright navigation failed: {e}")
-                    browser.close()
-                    # fall back to whatever static body we have
-                    soup = BeautifulSoup(html, 'html.parser')
-                    return _clean_text_blocks(' '.join([t.strip() for t in soup.stripped_strings]))
 
-                # scroll to load lazy content
-                try:
-                    page.evaluate("async () => { const delay=(ms)=>new Promise(r=>setTimeout(r,ms)); for(let y=0;y<document.body.scrollHeight;y+=window.innerHeight){ window.scrollTo(0,y); await delay(200);} await delay(300);}"
-                    )
-                except Exception:
-                    pass
-                rendered = page.content()
-                try:
-                    final_url = page.url or final_url
-                except Exception:
-                    pass
-                browser.close()
-                soup = BeautifulSoup(rendered, 'html.parser')
-        except Exception as e:
-            print(f"[WARN] Playwright fallback failed: {e}")
-            # if Playwright isn't available or failed, continue with original soup
-            soup = BeautifulSoup(html, "html.parser")
-            final_url = getattr(resp, 'url', url) or url
-
-    # Prefer article containers; also try to find a title and use only its nearby paragraphs
-    candidates = []
-    for sel in [
-        "article",
-        "div.entry-content",
-        "div.post-content",
-        "main",
-        "div#content",
-        "div.content",
-    ]:
-        node = soup.select_one(sel)
-        if node:
-            candidates.append(node)
-
-    # If we found a clear article container, prefer it
-    node = candidates[0] if candidates else None
-    if node is None:
-        # Choose the DOM element containing the largest amount of paragraph text.
-        best = None
-        best_len = 0
-        for el in soup.find_all(['article', 'section', 'div']):
-            ps = el.find_all('p')
-            total = sum(len(p.get_text(' ', strip=True) or '') for p in ps)
-            if total > best_len:
-                best_len = total
-                best = el
-        if best is not None and best_len > 200:
-            node = best
-        else:
-            node = soup.body or soup
-
-    # collect paragraphs and headings only (avoid nav/footers)
-    blocks = []
-
-    # attempt to preserve an explicit title and author/date lines when available
-    title = None
-    for h in node.find_all(['h1', 'h2']):
-        t = h.get_text(' ', strip=True)
-        if t and len(t) > 10:
-            title = t
-            break
-
-    # common boilerplate tokens we want to ignore
-    BOILER_TOKENS = [
-        'subscribe now', 'sign in', 'create an account', 'unlimited online access',
-        'get exclusive access', 'support local journalists', 'daily puzzles', 'share this story',
-        'advertisement', 'postmedia is committed', 'comments may take', 'conversation all comments',
-        'copy link', 'email', 'reddit', 'pinterest', 'linkedin', 'tumblr', 'save this article',
-        'start your day with', 'interested in more newsletters', 'you can save this article',
-        'please provide a valid email address'
-    ]
-
-    seen_blocks = set()
-    for el in node.find_all(["p", "h1", "h2", "h3", "li"]):
-        t = el.get_text(" ", strip=True)
-        if not t or len(t) < 30:
-            # skip very short UI fragments
-            continue
-        tl = t.lower()
-        # stop if we've reached the comments or conversation section
-        if tl.startswith('conversation') or tl.startswith('comments') or 'comment by' in tl:
-            break
-        # skip blocks that look like share/subscribe/ads/prompts
-        skip = False
-        for token in BOILER_TOKENS:
-            if token in tl:
-                skip = True
-                break
-        if skip:
-            continue
-        # dedupe repeated article fragments
-        if t in seen_blocks:
-            continue
-        seen_blocks.add(t)
-        blocks.append(t)
-
-    # If we didn't find a title inside the chosen node, try global headings
-    if not title:
-        for h in soup.find_all(['h1', 'h2']):
-            t = h.get_text(' ', strip=True)
-            if t and len(t) > 10:
-                title = t
-                break
-
-    # Build the full scraped text (deduped blocks, minimal cleaning)
-    raw_full = " ".join(blocks)
-
-    # Remove obvious boilerplate/marketing/sidebar lines from the full text while preserving author/date lines
-    STOP_TOKENS = [
-        'enjoy insights', 'access articles from across canada', 'share your thoughts', 'join the conversation',
-        'enjoy additional articles', 'by signing up', 'you consent', 'sign in', 'subscribe now', 'start your day', 'interested in more newsletters',
-        'story continues below', 'advertisement', 'this advertisement', 'loading', 'article content', 'related', 'newsletter',
-        'youremail', 'photo by', 'comments', '1 minute read', 'please try again', 'we encountered an issue signing',
-        'the next issue', 'sunrise', 'start your day with', 'access articles from across canada with one account', 'sign up'
-    ]
-
-    # tighten: treat lines that start with short site tags (e.g., "Related: ...") as stop tokens
-    STOP_PREFIXES = ['related:', 'you might also like', 'more on', 'from our partners', 'related stories', 'related coverage']
-
-    full_blocks = []
-    for b in blocks:
-        bl = b.lower()
-        # preserve author/published lines explicitly (only when 'By' is followed by a capitalized name)
-        if re.match(r'^(author\b|by\s+[A-Z][\w\-\']+)', b.strip()):
-            full_blocks.append(b)
-            continue
-        if re.search(r'published\s', bl) or re.search(r'last updated', bl):
-            full_blocks.append(b)
-            continue
-        # drop lines that begin with explicit related prefixes
-        if any(bl.startswith(pfx) for pfx in STOP_PREFIXES):
-            continue
-        # filter obvious boilerplate
-        if any(tok in bl for tok in STOP_TOKENS):
-            continue
-        # skip very short UI fragments like 'Loading...' or single-word site tags
-        if len(b.strip()) < 30:
-            # keep short sentences that look like headlines (start with capital and contain a space)
-            if not (len(b.strip()) >= 30 or re.match(r'^[A-Z][\w\s\'’:-]+$', b.strip())):
-                continue
-        full_blocks.append(b)
-
-    # Trim trailing unrelated site headlines/related-articles: keep up to last substantive paragraph.
-    substantive_tokens = ['coroners', 'investigation', 'harness', 'leash', 'recovery', 'recovered', 'found', 'fell', 'died', 'death', 'coroner', 'submitted', 'report', 'search and rescue', 'squad', 'rcmp']
-    last_idx = None
-    for i, b in enumerate(full_blocks):
-        bl = b.lower()
-        if any(tok in bl for tok in substantive_tokens):
-            last_idx = i
-    if last_idx is not None:
-        full_blocks = full_blocks[: last_idx + 1]
-
-    # join preserved blocks into paragraphs
-    # Include title as the first paragraph if present
-    para_blocks = []
-    if title:
-        para_blocks.append(title.strip())
-    para_blocks.extend([b.strip() for b in full_blocks if b and b.strip()])
-    full_text = "\n\n".join(para_blocks)
-
-    # Remove common one-line newsletter/signup fragments left inside paragraphs
-    full_text = re.sub(r"By signing up[\s\S]*?(?=\n\n|$)", "", full_text, flags=re.IGNORECASE)
-    full_text = re.sub(r"The next issue of [^\.\n]+will soon be in your inbox[\s\S]*?(?=\n\n|$)", "", full_text, flags=re.IGNORECASE)
-    full_text = re.sub(r"By signing up you consent[\s\S]*?(?=\n\n|$)", "", full_text, flags=re.IGNORECASE)
-
-    # After removing, collapse multiple blank lines
-    full_text = re.sub(r"\n{3,}", "\n\n", full_text)
-
-    # If an author email is present, trim after it (common site pattern)
-    email_m = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", full_text)
-    if email_m:
-        full_text = full_text[: email_m.end()].strip()
-    else:
-        # Otherwise, keep up to the last substantive paragraph (by tokens)
-        paras = [p.strip() for p in full_text.split('\n\n') if p.strip()]
-        last_para_idx = None
-        for i, p in enumerate(paras):
-            pl = p.lower()
-            if any(tok in pl for tok in substantive_tokens):
-                last_para_idx = i
-        if last_para_idx is not None:
-            paras = paras[: last_para_idx + 1]
-            full_text = '\n\n'.join(paras)
-
-    # Remove common newsletter/signup fragments that often appear mid-article
-    full_text = re.sub(r"By signing up[\s\S]*?Please try again", "", full_text, flags=re.IGNORECASE)
-    full_text = re.sub(r"You (have )?been (signed up|subscribed)[\s\S]*?", "", full_text, flags=re.IGNORECASE)
-
-    # Remove trailing related headlines often appended by the site (short repeated headlines)
-    # heuristics: many short sentences separated by punctuation repeated; strip them after the main article
-    # Final pass: if the last paragraphs look like a short run of related headlines, strip them
-    paras = [p.strip() for p in full_text.split('\n\n') if p.strip()]
-    # detect trailing short-run headlines: 3+ paras of <=12 words each
-    tail_run = 0
-    for p in reversed(paras):
-        if len(re.findall(r"\w+", p)) <= 12:
-            tail_run += 1
-        else:
-            break
-    if tail_run >= 3:
-        paras = paras[:-tail_run]
-    full_text = '\n\n'.join(paras)
-
-    # If we have many blocks, try to focus on the main article by finding an anchor block
-    anchor_regex = re.compile(r"\b(slackline|fell|died|death|fatal|RCMP|Coroners|recovery|highliner|Search and Rescue|recover)\b", re.IGNORECASE)
-    anchor_idx = None
-    for i, b in enumerate(blocks):
-        if anchor_regex.search(b):
-            anchor_idx = i
-            break
-
-    if anchor_idx is not None:
-        start = max(0, anchor_idx - 1)
-        end = min(len(blocks), anchor_idx + 6)
-        focused = blocks[start:end]
-    else:
-        focused = blocks
-
-    # Remove common marketing/subscribe/related lines from the focused window
-    CLEAN_TOKENS = [
-        'enjoy insights', 'access articles from across canada', 'share your thoughts', 'join the conversation',
-        'enjoy additional articles', 'by signing up', 'create an account', 'sign in', 'subscribe now',
-        'start your day', 'interested in more newsletters', 'story continues below', 'advertisement',
-        'this advertisement', 'big cuts are coming', 'what\'s open and closed', 'news', 'local news'
-    ]
-    final = []
-    for b in focused:
-        bl = b.lower()
-        if any(tok in bl for tok in CLEAN_TOKENS):
-            continue
-        # drop lines that look like related headlines (very short but title-like)
-        if len(b) < 60 and re.match(r"^[A-Z][\w\s'’:-]+$", b) and ' ' in b:
-            # possible headline - skip to avoid related article headlines
-            continue
-        final.append(b)
-
-    text = " ".join(final)
-    focused_text = _clean_text_blocks(text)
-    full_text = _clean_text_blocks(full_text)
-    return full_text, focused_text, final_url
+# module logger
+logger = logging.getLogger(__name__)
+try:
+    logger.addHandler(logging.NullHandler())
+except Exception:
+    pass
 
 
 # -------------------- LLM extraction --------------------
@@ -654,12 +371,12 @@ def _llm_extract(article_text: str) -> dict:
     content = article_text[:18000]
     pre = pre_extract_fields(article_text)
     if not _OPENAI_AVAILABLE or _client is None:
-        print("[WARN] OPENAI_API_KEY not set; skipping LLM extraction")
+        logger.warning("OPENAI_API_KEY not set; skipping LLM extraction")
         return {}
 
     # Respect per-run OpenAI call cap if configured
     if not can_make_call():
-        print("[WARN] OpenAI call cap reached (remaining=0); skipping LLM extraction")
+        logger.warning("OpenAI call cap reached (remaining=0); skipping LLM extraction")
         return {}
 
     # Build the prompt with PRE-EXTRACTED
@@ -805,10 +522,12 @@ def _postprocess(obj: dict) -> dict:
             vals = [s.strip() for s in v if isinstance(s, str) and s.strip()]
             if vals:
                 # dedupe preserve order
-                seen = set(); uniq = []
+                seen = set()
+                uniq = []
                 for s in vals:
                     if s not in seen:
-                        seen.add(s); uniq.append(s)
+                        seen.add(s)
+                        uniq.append(s)
                 out[k] = uniq
         elif isinstance(v, str) and v.strip():
             out[k] = [v.strip()]
@@ -879,7 +598,7 @@ def _postprocess(obj: dict) -> dict:
     # some light logical checks
     if out.get('num_fatalities') is not None and out.get('num_people_involved') is not None:
         if out['num_fatalities'] > out['num_people_involved']:
-            print('⚠️  [WARN] num_fatalities > num_people_involved; leaving values but check source')
+            logger.warning('⚠️  num_fatalities > num_people_involved; leaving values but check source')
 
     # prefer gazetteer matches if present in pre-extracted fields
     # If the LLM returned a generic mountain name, but we have a gazetteer match, prefer the gazetteer
@@ -972,16 +691,29 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
         out_path = Path(out_dir)
         out_path.mkdir(parents=True, exist_ok=True)
 
-    print(f"[INFO] Reading article text: {url}")
+    logger.info(f"Reading article text: {url}")
     # Ensure Playwright nav timeout is capped at 25s via env variable handling
     try:
         os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = str(min(int(os.getenv('PLAYWRIGHT_NAV_TIMEOUT_MS','25000')), 25000))
     except Exception:
         os.environ['PLAYWRIGHT_NAV_TIMEOUT_MS'] = '25000'
     # fetch article text and final navigated URL
-    full_text, text, final_url = _extract_article_text(url)
+    res = _extract_article_text(url)
+    # support legacy 2-tuple returns (full_text, focused_text) used in tests/mocks
+    if isinstance(res, tuple) and len(res) == 3:
+        full_text, text, final_url = res
+    elif isinstance(res, tuple) and len(res) == 2:
+        full_text, text = res
+        final_url = url
+    else:
+        # unexpected shape: fallback
+        try:
+            full_text, text = res
+            final_url = url
+        except Exception:
+            full_text, text, final_url = '', '', url
 
-    print("[INFO] LLM extracting structured accident info")
+    logger.info("LLM extracting structured accident info")
     pre = pre_extract_fields(text)
     obj = _llm_extract(text)
     # attach the pre-extracted dict into the object for downstream use
@@ -1028,11 +760,11 @@ def extract_accident_info(url: str, out_dir: str | Path | None = None, base_outp
             try:
                 upsert_artifact(payload)
             except Exception as e:
-                print(f"[WARN] Failed to write artifact to DB: {e}")
+                logger.warning(f"Failed to write artifact to DB: {e}")
     except Exception:
         pass
 
-    print(f"[INFO] ✅ Wrote {json_path}")
+    logger.info(f"✅ Wrote {json_path}")
     return json_path
 
 
@@ -1047,7 +779,6 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
     # break into batches
     for i in range(0, len(urls), batch_size):
         batch = urls[i:i+batch_size]
-        prints = []
         pre_list = []
         texts = []
         full_texts = []
@@ -1060,8 +791,19 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                 od = Path(base_output) / _slugify(urlparse(u).netloc.replace('www.', '')) / datetime.now().strftime('%Y%m%d_%H%M%S')
                 od.mkdir(parents=True, exist_ok=True)
             out_dirs.append(od)
-            # extract text deterministically
-            full_text, focused, final_u = _extract_article_text(u)
+            # extract text deterministically; accept either (full, focused) or (full, focused, final_url)
+            res = _extract_article_text(u)
+            if isinstance(res, tuple) and len(res) == 3:
+                full_text, focused, final_u = res
+            elif isinstance(res, tuple) and len(res) == 2:
+                full_text, focused = res
+                final_u = u
+            else:
+                try:
+                    full_text, focused = res
+                    final_u = u
+                except Exception:
+                    full_text, focused, final_u = '', '', u
             texts.append(focused)
             full_texts.append(full_text)
             final_urls.append(final_u or u)
@@ -1077,14 +819,13 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             })
 
         # Compose prompt: SCHEMA + list of items
-        schema = _PROMPT
         payload = {
             'items': items
         }
 
         # Respect call caps and availability
         if not _OPENAI_AVAILABLE or _client is None:
-            print('[WARN] OPENAI_API_KEY not set; skipping batch LLM extraction')
+            logger.warning('OPENAI_API_KEY not set; skipping batch LLM extraction')
             # still write minimal artifacts with scraped_full_text and pre_extracted
             for idx, u in enumerate(batch):
                 payload_write = {
@@ -1103,7 +844,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
 
         # check call cap before attempting the batch call
         if not can_make_call():
-            print('[WARN] OpenAI call cap reached; skipping LLM batch for this group')
+            logger.warning('OpenAI call cap reached; skipping LLM batch for this group')
             for idx, u in enumerate(batch):
                 payload_write = {
                     'source_url': final_urls[idx] if idx < len(final_urls) and final_urls[idx] else u,
@@ -1132,7 +873,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                 ],
             )
         except Exception as e:
-            print(f'[WARN] Batch LLM call failed: {e}')
+            logger.warning(f'Batch LLM call failed: {e}')
             continue
 
         raw = resp.choices[0].message.content.strip()
@@ -1184,14 +925,14 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
             except Exception:
                 pass
         except Exception:
-            print('[WARN] Failed to parse batch LLM response; skipping batch')
+            logger.warning('Failed to parse batch LLM response; skipping batch')
             continue
 
         # postprocess and write per-url artifacts
         # If response length doesn't match batch length, be conservative: iterate up to min length
         min_len = min(len(arr), len(batch))
         if len(arr) != len(batch):
-            print(f'[WARN] LLM returned {len(arr)} items for batch of {len(batch)}; aligning to {min_len} items')
+            logger.warning(f'LLM returned {len(arr)} items for batch of {len(batch)}; aligning to {min_len} items')
 
         for idx in range(min_len):
             out_obj = arr[idx]
@@ -1225,7 +966,7 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
                     try:
                         upsert_artifact(payload_write)
                     except Exception as e:
-                        print(f"[WARN] Failed to write batch artifact to DB: {e}")
+                        logger.warning(f"Failed to write batch artifact to DB: {e}")
             except Exception:
                 pass
 
@@ -1236,6 +977,6 @@ def batch_extract_accident_info(urls: list[str], batch_size: int = 3, base_outpu
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print(f"Usage: python {Path(__file__).name} <URL>")
+        logger.info(f"Usage: python {Path(__file__).name} <URL>")
         sys.exit(1)
     extract_accident_info(sys.argv[1])
