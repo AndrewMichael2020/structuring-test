@@ -108,6 +108,7 @@ from accident_utils import _ensure_outdir, _slugify
 from accident_preextract import pre_extract_fields
 from accident_postprocess import _postprocess, compute_confidence
 from accident_llm import llm_extract, _OPENAI_AVAILABLE
+import accident_llm as _al
 
 # Local client shim for tests; batch path uses this _client via _chat_create
 _client = None
@@ -120,11 +121,19 @@ def _supports_temperature(model_name: str) -> bool:
         return True
 
 def _chat_create(messages: list, model: str):
+    """Create a chat completion for batch mode.
+
+    Behavior:
+    - If tests have patched this module's _client, use it (preserves unit test hooks).
+    - Otherwise, delegate to the shared accident_llm._chat_create which uses the real OpenAI client when configured.
+    """
     kwargs = {'model': model, 'messages': messages}
     if _supports_temperature(model):
         kwargs['temperature'] = 0
-    # Expect _client to be patched in tests; otherwise this will raise
-    return _client.chat.completions.create(**kwargs)
+    if _client is not None:
+        return _client.chat.completions.create(**kwargs)
+    # delegate to shared LLM client (returns an OpenAI response object)
+    return _al._chat_create(messages=messages, model=model)
 
 
 # use centralized timezone helpers in `time_utils.py`
@@ -325,13 +334,30 @@ def batch_extract_accident_info(
             final_urls.append(final_u or u)
             pre = pre_extract_fields(focused)
             pre_list.append(pre)
+        # helper to write a minimal artifact for index idx within this batch
+        def _write_minimal(idx: int):
+            payload_write = {
+                'extracted_at': now_pst_iso(),
+                'article_text': texts[idx],
+                'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
+                'pre_extracted': pre_list[idx],
+            }
+            payload_write['source_url'] = (
+                final_urls[idx] if idx < len(final_urls) and final_urls[idx] else batch[idx]
+            )
+            pth = str(out_dirs[idx] / 'accident_info.json')
+            with open(pth, 'w', encoding='utf-8') as f:
+                json.dump(payload_write, f, indent=2, ensure_ascii=False)
+            written.append(pth)
     # Build a batched prompt asking for an array of JSON objects
         items = []
         for idx, u in enumerate(batch):
+            # Provide both focused and full text contexts to the LLM to help when pages are teaser-only
             items.append({
                 'url': u,
                 'pre_extracted': pre_list[idx],
-                'article': texts[idx][:12000]
+                'article_focused': texts[idx][:12000],
+                'article_full': (full_texts[idx] if idx < len(full_texts) else '')[:16000],
             })
 
     # Compose prompt: SCHEMA + list of items
@@ -347,23 +373,7 @@ def batch_extract_accident_info(
             # still write minimal artifacts with scraped_full_text and
             # pre_extracted
             for idx, u in enumerate(batch):
-                payload_write = {
-                    'extracted_at': now_pst_iso(),
-                    'article_text': texts[idx],
-                    'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
-                    'pre_extracted': pre_list[idx]
-                }
-                # ensure canonical URL is preserved (LLM output should not
-                # override)
-                payload_write['source_url'] = (
-                    final_urls[idx]
-                    if idx < len(final_urls) and final_urls[idx]
-                    else u
-                )
-                p = str(out_dirs[idx] / 'accident_info.json')
-                with open(p, 'w', encoding='utf-8') as f:
-                    json.dump(payload_write, f, indent=2, ensure_ascii=False)
-                written.append(p)
+                _write_minimal(idx)
             continue
 
         # check call cap before attempting the batch call
@@ -372,29 +382,15 @@ def batch_extract_accident_info(
                 'OpenAI call cap reached; skipping LLM batch for this group'
             )
             for idx, u in enumerate(batch):
-                payload_write = {
-                    'source_url': (
-                        final_urls[idx]
-                        if idx < len(final_urls) and final_urls[idx]
-                        else u
-                    ),
-                    'extracted_at': now_pst_iso(),
-                    'article_text': texts[idx],
-                    'scraped_full_text': (
-                        full_texts[idx] if idx < len(full_texts) else ''
-                    ),
-                    'pre_extracted': pre_list[idx],
-                }
-                p = str(out_dirs[idx] / 'accident_info.json')
-                with open(p, 'w', encoding='utf-8') as f:
-                    json.dump(payload_write, f, indent=2, ensure_ascii=False)
-                written.append(p)
+                _write_minimal(idx)
             continue
 
         # single LLM call for the batch
         prompt = (
             "System: Return a JSON array with one extraction object per item. "
-            "Use the provided PRE-EXTRACTED and ARTICLE fields.\n"
+            "Use the provided PRE-EXTRACTED fields plus ARTICLE_FOCUSED and ARTICLE_FULL. "
+            "Prefer ARTICLE_FOCUSED when it seems like a cleaned summary; if it's too short or teaser, "
+            "supplement with ARTICLE_FULL. Do not hallucinate; only infer cautiously.\n"
         )
         prompt += json.dumps(payload, ensure_ascii=False)
 
@@ -414,6 +410,9 @@ def batch_extract_accident_info(
             )
         except Exception as e:
             logger.warning(f'Batch LLM call failed: {e}')
+            # Write minimal artifacts for each item in this batch
+            for idx in range(len(batch)):
+                _write_minimal(idx)
             continue
 
         raw = resp.choices[0].message.content.strip()
@@ -479,7 +478,9 @@ def batch_extract_accident_info(
             except Exception:
                 pass
         except Exception:
-            logger.warning('Failed to parse batch LLM response; skipping batch')
+            logger.warning('Failed to parse batch LLM response; writing minimal artifacts for batch')
+            for idx in range(len(batch)):
+                _write_minimal(idx)
             continue
 
         # postprocess and write per-url artifacts
@@ -535,6 +536,11 @@ def batch_extract_accident_info(
                         )
             except Exception:
                 pass
+
+        # For any remaining URLs beyond the returned array length, write minimal artifacts
+        if len(arr) < len(batch):
+            for idx in range(len(arr), len(batch)):
+                _write_minimal(idx)
 
     return written
 

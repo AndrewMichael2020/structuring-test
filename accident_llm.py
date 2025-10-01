@@ -75,10 +75,15 @@ def llm_extract(article_text: str) -> dict:
         logger.warning("OpenAI call cap reached (remaining=0); skipping LLM extraction")
         return {}
 
-    prompt = _PROMPT.format(
-        SCHEMA=_SCHEMA_TEXT,
-        PRE=json.dumps(pre, ensure_ascii=False, indent=2),
-        ARTICLE=content,
+    # Augment user prompt to hint that text may be teaser/short; advise cautious inference
+    prompt = (
+        _PROMPT.format(
+            SCHEMA=_SCHEMA_TEXT,
+            PRE=json.dumps(pre, ensure_ascii=False, indent=2),
+            ARTICLE=content,
+        )
+        + "\n\nNote: The ARTICLE text may be a teaser or partial content. If information seems missing, "
+          "extract only what is explicitly present or strongly implied by the text; avoid hallucination."
     )
     resp = _chat_create(
         messages=[

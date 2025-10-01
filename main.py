@@ -128,19 +128,19 @@ if __name__ == "__main__":
             enrich_json_with_conditions(json_path)
 
         elif mode == 'text-only':
-            json_path = extract_and_save(url, run_ocr=False, download_images=False)
-            run_dir = str(Path(json_path).parent)
+            # New order: extract and analyze text first; skip image/OCR tasks
             ts_print(f"[INFO] Extracting accident info for {url}")
-            extract_accident_info(url, out_dir=run_dir)
+            extract_accident_info(url)
             # Always force CSV rebuild and Drive upload after extraction
             force_rebuild_and_upload_artifacts_csv()
 
         else:  # all
-            json_path = extract_and_save(url, run_ocr=True, download_images=True)
-            ts_print(f"[INFO] Extracting HTML captions from {url}")
-            enrich_json_with_conditions(json_path)
-            run_dir = str(Path(json_path).parent)
+            # New order: extract and analyze text first, then run image/OCR tasks
             ts_print(f"[INFO] Extracting accident info for {url}")
-            extract_accident_info(url, out_dir=run_dir)
+            extract_accident_info(url)
+            # Then extract captions/images and perform OCR enrichment
+            json_path = extract_and_save(url, run_ocr=True, download_images=True)
+            ts_print(f"[INFO] Enriching image captions with OCR/Vision for {url}")
+            enrich_json_with_conditions(json_path)
             # Always force CSV rebuild and Drive upload after extraction
             force_rebuild_and_upload_artifacts_csv()

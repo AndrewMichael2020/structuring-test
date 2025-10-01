@@ -10,6 +10,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from typing import Tuple
+from urllib.parse import urljoin
 import logging
 
 # attempt to reuse optional helper available elsewhere
@@ -19,6 +20,7 @@ except Exception:
     get_with_retries = None
 
 PLAYWRIGHT_STEALTH = os.getenv("PLAYWRIGHT_STEALTH", "true").lower() in ("1", "true", "yes")
+PLAYWRIGHT_HEADLESS = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() in ("1", "true", "yes")
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -31,6 +33,40 @@ except Exception:
 
 def _clean_text_blocks(txt: str) -> str:
     return re.sub(r"\s+", " ", txt).strip()
+
+
+# Optional readability fallback
+try:
+    from readability import Document  # type: ignore
+    _HAS_READABILITY = True
+except Exception:
+    Document = None  # type: ignore
+    _HAS_READABILITY = False
+
+
+def _extract_text_via_readability(html: str) -> Tuple[str, str]:
+    """Best-effort readability extraction; returns (full_text, focused_text)."""
+    if not _HAS_READABILITY or not html:
+        return "", ""
+    try:
+        doc = Document(html)
+        title = doc.short_title() or doc.title() or ""
+        summary_html = doc.summary(html_partial=True)
+        s = BeautifulSoup(summary_html, "html.parser")
+        parts = []
+        if title and len(title) > 5:
+            parts.append(title.strip())
+        for el in s.find_all(["p", "li", "h2", "h3"]):
+            t = el.get_text(" ", strip=True)
+            if t and len(t) > 30:
+                parts.append(t)
+        full_text = "\n\n".join(parts)
+        full_text = _clean_text_blocks(full_text)
+        paras = [p.strip() for p in full_text.split("\n\n") if p.strip()]
+        focused = " ".join(paras[: min(5, len(paras))]) if paras else full_text
+        return full_text, _clean_text_blocks(focused)
+    except Exception:
+        return "", ""
 
 
 def extract_article_text(url: str, timeout: int = 25) -> Tuple[str, str, str]:
@@ -60,16 +96,60 @@ def extract_article_text(url: str, timeout: int = 25) -> Tuple[str, str, str]:
 
     soup = BeautifulSoup(html, "html.parser")
     body_text = ' '.join([t.strip() for t in soup.stripped_strings])
+
+    # Try AMP endpoint if linked or simple variants appear useful, before resorting to Playwright
+    try:
+        blocked_or_short = (
+            (resp is not None and getattr(resp, 'status_code', None) in (202, 403))
+            or len(body_text) < 100
+            or 'access denied' in body_text.lower()
+            or '403 forbidden' in body_text.lower()
+        )
+        if blocked_or_short:
+            amp_link = None
+            link_tag = soup.find('link', rel=lambda v: v and 'amphtml' in v)
+            if link_tag and link_tag.get('href'):
+                amp_link = urljoin(final_url, link_tag['href'])
+            # If no amphtml link, try common patterns conservatively
+            candidate_urls = []
+            if not amp_link:
+                if not final_url.rstrip('/').endswith('/amp'):
+                    candidate_urls.append(final_url.rstrip('/') + '/amp')
+                if '?outputType=amp' not in final_url:
+                    sep = '&' if '?' in final_url else '?'
+                    candidate_urls.append(final_url + f"{sep}outputType=amp")
+            else:
+                candidate_urls.append(amp_link)
+
+            for cu in candidate_urls:
+                try:
+                    r2 = requests.get(cu, headers=headers, timeout=timeout)
+                    if r2.ok and r2.text and len(r2.text) > len(html):
+                        soup = BeautifulSoup(r2.text, 'html.parser')
+                        body_text = ' '.join([t.strip() for t in soup.stripped_strings])
+                        final_url = getattr(r2, 'url', final_url) or final_url
+                        break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
     if (resp is not None and getattr(resp, 'status_code', None) == 403) or len(body_text) < 100 or 'access denied' in body_text.lower() or '403 forbidden' in body_text.lower():
         try:
             from playwright.sync_api import sync_playwright
             logger.info(f"Static fetch appears blocked (status={getattr(resp,'status_code',None)}). Falling back to Playwright for {url}")
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
-                context = browser.new_context(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36', viewport={'width':1200,'height':800}, extra_http_headers={'referer': url})
+                browser = p.chromium.launch(headless=PLAYWRIGHT_HEADLESS, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
+                context = browser.new_context(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36', viewport={'width':1200,'height':800}, extra_http_headers={'referer': url}, locale='en-US', timezone_id=os.getenv('TIMEZONE_ID', 'America/Los_Angeles'))
                 try:
                     if PLAYWRIGHT_STEALTH:
-                        context.add_init_script("() => { Object.defineProperty(navigator, 'webdriver', {get: () => false}); }")
+                        context.add_init_script(
+                            "() => {"
+                            " Object.defineProperty(navigator, 'webdriver', {get: () => false});"
+                            " Object.defineProperty(navigator, 'languages', {get: () => ['en-US','en']});"
+                            " Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]});"
+                            " }"
+                        )
                 except Exception:
                     pass
                 page = context.new_page()
@@ -88,6 +168,15 @@ def extract_article_text(url: str, timeout: int = 25) -> Tuple[str, str, str]:
 
                 try:
                     page.evaluate("async () => { const delay=(ms)=>new Promise(r=>setTimeout(r,ms)); for(let y=0;y<document.body.scrollHeight;y+=window.innerHeight){ window.scrollTo(0,y); await delay(200);} await delay(300);}")
+                except Exception:
+                    pass
+                # Wait briefly for content growth if body text looks tiny
+                try:
+                    for _ in range(5):
+                        txt_len = page.evaluate("() => document.body && document.body.innerText ? document.body.innerText.length : 0")
+                        if txt_len and txt_len > 2000:
+                            break
+                        page.wait_for_timeout(400)
                 except Exception:
                     pass
                 rendered = page.content()
@@ -258,4 +347,14 @@ def extract_article_text(url: str, timeout: int = 25) -> Tuple[str, str, str]:
     text = " ".join(final)
     focused_text = _clean_text_blocks(text)
     full_text = _clean_text_blocks(full_text)
+
+    # Readability fallback if content still looks very short (generic heuristic)
+    try:
+        if len(full_text) < 800:
+            fr, ff = _extract_text_via_readability(str(soup))
+            if fr and len(fr) > len(full_text):
+                full_text, focused_text = fr, ff
+    except Exception:
+        pass
+
     return full_text, focused_text, final_url

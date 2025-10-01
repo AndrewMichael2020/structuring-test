@@ -11,6 +11,7 @@ pytest
 
 # LLM-based enrichment
 openai
+readability-lxml
 
 # Load .env files for local development (used by accident_info.py to read OPENAI_API_KEY etc.)
 python-dotenv
@@ -33,3 +34,5 @@ google-auth-oauthlib
 # force_rebuild_and_upload_artifacts_csv()
 # print('Done')
 # PY
+
+# python main.py --urls-file urls.txt --mode text-only --batch-size 3
