@@ -7,9 +7,9 @@ Orchestrates full pipeline:
 """
 
 import sys
-import time
 import os
 import argparse
+import logging
 from typing import List
 from extract_captions import extract_and_save
 from image_ocr import enrich_json_with_conditions
@@ -17,12 +17,31 @@ from pathlib import Path
 from accident_info import extract_accident_info, batch_extract_accident_info
 from urllib.parse import urlparse
 from store_artifacts import init_db
+from logging_config import configure_logging
 
-def ts_print(*args, **kwargs):
-    t = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{t}]", *args, **kwargs)
+# configure module-level logger; main() will configure root logging
+logger = logging.getLogger(__name__)
+
+
+def ts_print(*args, level: str = 'info', **kwargs):
+    """Compatibility wrapper used across the CLI to print timestamped messages.
+
+    It forwards messages to the logging system so verbosity can be controlled centrally.
+    """
+    msg = " ".join(str(a) for a in args)
+    lvl = level.lower()
+    if lvl == 'debug':
+        logger.debug(msg, **kwargs)
+    elif lvl == 'warning' or lvl == 'warn':
+        logger.warning(msg, **kwargs)
+    elif lvl == 'error':
+        logger.error(msg, **kwargs)
+    else:
+        logger.info(msg, **kwargs)
 
 if __name__ == "__main__":
+    # Configure logging via helper (only sets defaults if not already configured).
+    configure_logging()
     parser = argparse.ArgumentParser(description='Extract accident info from news URLs')
     parser.add_argument('urls', nargs='*', help='One or more URLs to process')
     parser.add_argument('--mode', choices=['all', 'text-only', 'ocr-only'], default=None,
