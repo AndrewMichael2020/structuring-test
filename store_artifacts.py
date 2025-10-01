@@ -66,6 +66,12 @@ class _InMemoryDB:
 _DB: Optional[object] = None
 _DB_TYPE: Optional[str] = None  # 'sqlite' or 'memory'
 
+# In-process guard to avoid repeated Drive uploads during a single run.
+# Several callers (per-artifact sync, DB upsert, and a final force-rebuild) may
+# invoke the upload logic; we want to perform at most one Drive upload per
+# process invocation to avoid duplicate files.
+_DRIVE_UPLOAD_DONE = False
+
 # Drive sync globals (lazy)
 _DRIVE_STORAGE = None
 _DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
@@ -235,134 +241,163 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
 
     This function is best-effort and will not raise on errors.
     """
-    # Always update the local CSV mirror first (best-effort). Then attempt
-    # Drive upload only if the Drive client is available.
+    # Rebuild the canonical CSV from on-disk artifact JSON files so columns
+    # reliably map to JSON fields. This write must happen deterministically on
+    # every run so local `artifacts/artifacts.csv` always reflects on-disk JSON.
+    existing = {}
+    # helper to choose newest by extracted_at/ts
+    def _is_newer(ts_new: str | None, ts_old: str | None) -> bool:
+        if not ts_old:
+            return True
+        if not ts_new:
+            return False
+        # Try ISO comparison; fall back to lexicographic which works for most ISO strings
+        try:
+            from datetime import datetime
+            def _parse(t: str):
+                # Normalize 'Z' to +00:00 for fromisoformat
+                t = t.replace('Z', '+00:00')
+                return datetime.fromisoformat(t)
+            return _parse(ts_new) > _parse(ts_old)
+        except Exception:
+            try:
+                return str(ts_new) > str(ts_old)
+            except Exception:
+                return False
     try:
-        # Instead of relying on the possibly-inconsistent local CSV, rebuild
-        # the canonical CSV from all on-disk artifact JSON files so columns
-        # reliably map to JSON fields.
-        existing = {}
-        try:
-            # look for all accident_info.json files under artifacts/*/*
-            for path in glob.glob(os.path.join('artifacts', '*', '*', 'accident_info.json')):
-                try:
-                    with open(path, 'r', encoding='utf-8') as fh:
-                        a = json.load(fh)
-                except Exception:
-                    continue
-                src = a.get('source_url') or ''
+        # look for all accident_info.json files under artifacts/*/*
+        for path in glob.glob(os.path.join('artifacts', '*', '*', 'accident_info.json')):
+            try:
+                with open(path, 'r', encoding='utf-8') as fh:
+                    a = json.load(fh)
+            except Exception:
+                continue
+            src = a.get('source_url') or ''
+            domain = ''
+            try:
+                domain = src.split('/')[2]
+            except Exception:
                 domain = ''
-                try:
-                    domain = src.split('/')[2]
-                except Exception:
-                    domain = ''
-                rec_row = {}
-                for k in CANONICAL_ARTIFACT_FIELDS:
-                    rec_row[k] = a.get(k)
-                rec_row['domain'] = domain
-                rec_row['source_url'] = src
-                rec_row['ts'] = a.get('extracted_at')
-                try:
-                    rec_row['artifact_json'] = json.dumps(a, ensure_ascii=False)
-                except Exception:
-                    rec_row['artifact_json'] = ''
+            rec_row = {}
+            for k in CANONICAL_ARTIFACT_FIELDS:
+                rec_row[k] = a.get(k)
+            rec_row['domain'] = domain
+            rec_row['source_url'] = src
+            rec_row['ts'] = a.get('extracted_at')
+            try:
+                rec_row['artifact_json'] = json.dumps(a, ensure_ascii=False)
+            except Exception:
+                rec_row['artifact_json'] = ''
+            # Keep the newest record per source_url
+            prev = existing.get(src)
+            if not prev or _is_newer(rec_row.get('ts'), prev.get('ts')):
                 existing[src] = rec_row
-        except Exception:
-            # fallback to reading the existing CSV if glob fails
-            existing = _read_local_csv(_LOCAL_CSV_PATH)
-        # Normalize record into CSV-friendly row by flattening the artifact payload
-        artifact = rec.get("artifact") if isinstance(rec.get("artifact"), dict) else {}
-        # Compose a canonical row where keys align with CANONICAL_ARTIFACT_FIELDS
-        row = {}
-        for k in CANONICAL_ARTIFACT_FIELDS:
-            # prefer artifact-level values, fall back to top-level rec metadata
-            if isinstance(artifact.get(k), (list, dict)):
-                row[k] = artifact.get(k)
-            elif k in artifact and artifact.get(k) is not None:
-                row[k] = artifact.get(k)
+    except Exception:
+        # fallback to reading the existing CSV if glob fails
+        existing = _read_local_csv(_LOCAL_CSV_PATH)
+
+    # Normalize record into CSV-friendly row by flattening the artifact payload
+    artifact = rec.get('artifact') if isinstance(rec.get('artifact'), dict) else {}
+    # Compose a canonical row where keys align with CANONICAL_ARTIFACT_FIELDS
+    row = {}
+    for k in CANONICAL_ARTIFACT_FIELDS:
+        # prefer artifact-level values, fall back to top-level rec metadata
+        if isinstance(artifact.get(k), (list, dict)):
+            row[k] = artifact.get(k)
+        elif k in artifact and artifact.get(k) is not None:
+            row[k] = artifact.get(k)
+        else:
+            # some canonical columns come from rec metadata
+            if k == 'extraction_confidence_score':
+                row[k] = rec.get('extraction_confidence_score') or artifact.get(k)
+            elif k == 'mountain_name':
+                row[k] = rec.get('mountain_name') or artifact.get(k)
             else:
-                # some canonical columns come from rec metadata
-                if k == 'extraction_confidence_score':
-                    row[k] = rec.get('extraction_confidence_score') or artifact.get(k)
-                elif k == 'mountain_name':
-                    row[k] = rec.get('mountain_name') or artifact.get(k)
-                else:
-                    row[k] = artifact.get(k)
+                row[k] = artifact.get(k)
 
-        # add some metadata columns not present in the canonical artifact list
-        row['domain'] = rec.get('domain')
-        row['source_url'] = rec.get('source_url')
-        row['ts'] = rec.get('ts')
+    # add some metadata columns not present in the canonical artifact list
+    row['domain'] = rec.get('domain')
+    row['source_url'] = rec.get('source_url')
+    row['ts'] = rec.get('ts')
 
-        # keep a raw artifact backup
-        try:
-            row['artifact_json'] = json.dumps(artifact, ensure_ascii=False)
-        except Exception:
-            row['artifact_json'] = ''
+    # keep a raw artifact backup
+    try:
+        row['artifact_json'] = json.dumps(artifact, ensure_ascii=False)
+    except Exception:
+        row['artifact_json'] = ''
 
-        # update/insert our incoming record
-        existing[row.get('source_url')] = row
-        rows = list(existing.values())
-        # At this point `existing` contains rows keyed by source_url.
-        # Build a stable set of fieldnames: canonical fields first, then any extras
-        all_keys = set()
-        for r in existing.values():
-            all_keys.update(r.keys())
-        # Exclude metadata keys from extras to avoid duplication later
-        metadata_keys = {'domain', 'source_url', 'ts', 'artifact_json'}
-        extras = [k for k in sorted(all_keys) if k not in CANONICAL_ARTIFACT_FIELDS and k not in metadata_keys]
-        fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras
+    # update/insert our incoming record
+    existing[row.get('source_url')] = row
+    rows = list(existing.values())
+    # At this point `existing` contains rows keyed by source_url.
+    # Build a stable set of fieldnames: canonical fields first, then any extras
+    all_keys = set()
+    for r in existing.values():
+        all_keys.update(r.keys())
+    # Exclude metadata keys from extras to avoid duplication later
+    metadata_keys = {'domain', 'source_url', 'ts', 'artifact_json'}
+    extras = [k for k in sorted(all_keys) if k not in CANONICAL_ARTIFACT_FIELDS and k not in metadata_keys]
+    fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras
 
-        # Instead of expanding into many numbered columns, serialize nested lists/dicts
-        # as JSON strings (the CSV writer will do this) and also provide simple count
-        # columns (people_count, rescue_teams_count, and counts for URL lists).
-        # Build CSV fieldnames here so the local CSV is written with metadata and
-        # count columns even when Drive upload is not configured.
-        csv_fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras + ['domain', 'source_url', 'ts', 'artifact_json']
-        csv_fieldnames += ['people_count', 'rescue_teams_count']
-        for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
-            csv_fieldnames.append(f'{key}_count')
+    # Instead of expanding into many numbered columns, serialize nested lists/dicts
+    # as JSON strings (the CSV writer will do this) and also provide simple count
+    # columns (people_count, rescue_teams_count, and counts for URL lists).
+    # Build CSV fieldnames here so the local CSV is written with metadata and
+    # count columns even when Drive upload is not configured.
+    csv_fieldnames = list(CANONICAL_ARTIFACT_FIELDS) + extras + ['domain', 'source_url', 'ts', 'artifact_json']
+    csv_fieldnames += ['people_count', 'rescue_teams_count']
+    for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
+        csv_fieldnames.append(f'{key}_count')
 
-        normalized_rows = []
-        for src, r in existing.items():
-            # ensure artifact_json is present for consumers
-            if not r.get('artifact_json'):
+    normalized_rows = []
+    for src, r in existing.items():
+        # ensure artifact_json is present for consumers
+        if not r.get('artifact_json'):
+            try:
+                r['artifact_json'] = json.dumps(r.get('artifact') or {}, ensure_ascii=False)
+            except Exception:
+                r['artifact_json'] = ''
+
+        # compute counts for list fields
+        def _count_field(val):
+            if isinstance(val, str):
                 try:
-                    r['artifact_json'] = json.dumps(r.get('artifact') or {}, ensure_ascii=False)
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        return len(parsed)
+                    return 0
                 except Exception:
-                    r['artifact_json'] = ''
+                    return 0
+            if isinstance(val, list):
+                return len(val)
+            return 0
 
-            # compute counts for list fields
-            def _count_field(val):
-                if isinstance(val, str):
-                    try:
-                        parsed = json.loads(val)
-                        if isinstance(parsed, list):
-                            return len(parsed)
-                        return 0
-                    except Exception:
-                        return 0
-                if isinstance(val, list):
-                    return len(val)
-                return 0
+        r['people_count'] = _count_field(r.get('people'))
+        r['rescue_teams_count'] = _count_field(r.get('rescue_teams_involved'))
+        for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
+            r[f'{key}_count'] = _count_field(r.get(key))
 
-            r['people_count'] = _count_field(r.get('people'))
-            r['rescue_teams_count'] = _count_field(r.get('rescue_teams_involved'))
-            for key in ('photo_urls', 'video_urls', 'related_articles_urls', 'fundraising_links', 'official_reports_links'):
-                r[f'{key}_count'] = _count_field(r.get(key))
+        normalized_rows.append(r)
 
-            normalized_rows.append(r)
-
-        # write local CSV using the explicit csv_fieldnames (includes artifact_json and counts)
+    # write local CSV using the explicit csv_fieldnames (includes artifact_json and counts)
+    try:
         _write_local_csv(_LOCAL_CSV_PATH, normalized_rows, fieldnames=csv_fieldnames)
     except Exception:
-        # swallow errors writing local CSV to avoid breaking main flow
-        pass
+        # ensure we at least attempt to write an empty CSV header to avoid stale copies
+        try:
+            _write_local_csv(_LOCAL_CSV_PATH, [], fieldnames=csv_fieldnames)
+        except Exception:
+            pass
 
-    # Now attempt to upload to Drive if available.
+    # Now attempt to upload to Drive if available. Use an in-process guard so
+    # multiple callers don't upload more than once per run.
+    global _DRIVE_UPLOAD_DONE
     try:
         ds = _get_drive_storage()
         if not ds:
+            return
+        if _DRIVE_UPLOAD_DONE:
+            # already uploaded in this process; skip Drive upload
             return
 
         # csv_fieldnames already constructed above (csv_fieldnames). If for some reason
@@ -402,6 +437,8 @@ def _maybe_sync_to_drive(rec: Dict[str, Any]):
                 except TypeError:
                     # fallback for older versions of DriveStorage that don't accept fieldnames
                     res = ds.save_artifacts_csv(drive_rows, drive_filename=_DRIVE_FILENAME)
+                # mark that we performed an upload during this process
+                _DRIVE_UPLOAD_DONE = True
             except Exception:
                 # ensure res is always present for downstream logging
                 res = {}

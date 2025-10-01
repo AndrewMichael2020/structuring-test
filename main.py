@@ -44,8 +44,8 @@ if __name__ == "__main__":
     configure_logging()
     parser = argparse.ArgumentParser(description='Extract accident info from news URLs')
     parser.add_argument('urls', nargs='*', help='One or more URLs to process')
-    parser.add_argument('--mode', choices=['all', 'text-only', 'ocr-only'], default=None,
-                        help='Run mode: all, text-only, or ocr-only (interactive if omitted)')
+    parser.add_argument('--mode', choices=['all', 'text-only', 'ocr-only'], default='all',
+                        help='Run mode: all, text-only, or ocr-only (default: all)')
     parser.add_argument('--urls-file', type=str, default=None,
                         help='Path to a file with URLs (one per line) to run in batched LLM mode')
     parser.add_argument('--batch-size', type=int, default=3, help='Number of URLs per LLM batch')

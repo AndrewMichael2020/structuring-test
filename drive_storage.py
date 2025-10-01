@@ -38,63 +38,63 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+import logging
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+SCOPES = [
+    # Use the broader Drive scope so the app can update files the user didn't create with the app.
+    # drive.file limits access to files created or opened by the app; that caused PERMISSION_DENIED
+    # when updating an existing spreadsheet owned by the same user. Using full drive scope
+    # requires re-consent but enables reliable upsert behavior.
+    "https://www.googleapis.com/auth/drive",
+    # Needed to update native Google Sheets in-place
+    "https://www.googleapis.com/auth/spreadsheets",
+]
 
 
-def _ensure_creds(client_secrets_path: str, token_path: str) -> Credentials:
+def _ensure_creds(client_secrets_path: str, token_path: str, interactive: bool = False) -> Credentials:
     # Try to load existing token
     if os.path.exists(token_path):
         try:
             creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            # Refresh if possible and expired so token reuse works across runs
+            if creds and not creds.valid:
+                try:
+                    if creds.expired and creds.refresh_token:
+                        creds.refresh(Request())
+                        # persist refreshed token
+                        with open(token_path, "w", encoding="utf-8") as fh:
+                            fh.write(creds.to_json())
+                except Exception:
+                    # if refresh fails, fall back to interactive flow below
+                    # refresh failed; we'll fall through to interactive branch unless
+                    # the environment doesn't allow interactive consent. To avoid
+                    # blocking the main pipeline in non-interactive environments,
+                    # we do not launch an interactive console flow here. Instead
+                    # raise an informative error so callers can decide to skip
+                    # Drive upload or run the one-time helper script.
+                    raise RuntimeError("No valid Drive credentials available (refresh failed). Run scripts/drive_oauth.py to obtain credentials.")
             if creds and creds.valid:
                 return creds
         except Exception:
             pass
-
-    # Run console flow
-    flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, SCOPES)
-    try:
+    # If we reached this point there is no valid token on disk.
+    # If interactive is requested (only from the helper), run the console flow.
+    if interactive:
+        flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, SCOPES)
+        # Console flow prints an auth URL and asks for the code or redirected URL.
         creds = flow.run_console()
-    except Exception:
-        # Some environments don't implement run_console(); build a manual
-        # authorization URL that includes a redirect_uri so Google returns a
-        # code in the URL. The client secret for this project lists
-        # "http://localhost" as an allowed redirect, so set that explicitly.
-        redirect_uri = os.environ.get("DRIVE_OAUTH_REDIRECT", "http://localhost")
-        try:
-            flow.redirect_uri = redirect_uri
-        except Exception:
-            # ignore if not supported
-            pass
+        # Save token
+        p = Path(token_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("w", encoding="utf-8") as fh:
+            fh.write(creds.to_json())
+        return creds
 
-        auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline", include_granted_scopes="true")
-        print("Open this URL in your browser and complete consent. If the browser cannot reach the local loopback server, the address bar will still contain the redirect URL with the authorization code (it will look like http://localhost/?code=... ).\n")
-        print(auth_url)
-        print("\nAfter consent, copy the full redirect URL from your browser's address bar and paste it here, or paste just the value of the 'code' parameter.")
-        raw = input("Paste redirect URL or code: ").strip()
-        # Accept either the full redirect URL or just the code
-        code = raw
-        if raw.lower().startswith("http"):
-            # parse code param
-            from urllib.parse import parse_qs, urlparse
+    # Otherwise, avoid blocking the main pipeline waiting for console input.
+    raise RuntimeError("No Drive credentials found. Run scripts/drive_oauth.py for one-time interactive consent or set DRIVE_SERVICE_ACCOUNT_JSON for non-interactive auth.")
 
-            parsed = urlparse(raw)
-            qs = parse_qs(parsed.query)
-            code_list = qs.get("code") or qs.get("authcode")
-            if not code_list:
-                raise ValueError("No 'code' parameter found in the URL you pasted.")
-            code = code_list[0]
-
-        flow.fetch_token(code=code)
-        creds = flow.credentials
-
-    # Save token
-    p = Path(token_path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with p.open("w", encoding="utf-8") as fh:
-        fh.write(creds.to_json())
-    return creds
+    # (unreachable in non-interactive branch)
 
 
 class DriveStorage:
@@ -131,6 +131,72 @@ class DriveStorage:
             writer.writerow(row)
         return output.getvalue().encode("utf-8")
 
+    def _persisted_file_id_path(self) -> str:
+        # allow overriding via env var, otherwise use a default path in .credentials
+        return os.environ.get("DRIVE_ARTIFACTS_FILE_ID_PATH", ".credentials/drive_artifacts_file_id.txt")
+
+    def _read_persisted_file_id(self) -> Optional[str]:
+        # allow a direct env override of the file id as well
+        # Allow opt-in usage of a persisted id. By default we do NOT use a persisted
+        # id to avoid accidental updates/duplication across runs. Set
+        # DRIVE_USE_PERSISTED_ID=1 to enable the persisted-id behavior.
+        use_persist = str(os.environ.get("DRIVE_USE_PERSISTED_ID", "")).lower() in ("1", "true", "yes")
+        if use_persist:
+            env_id = os.environ.get("DRIVE_ARTIFACTS_FILE_ID")
+            if env_id:
+                return env_id
+        p = Path(self._persisted_file_id_path())
+        try:
+            if p.exists():
+                return p.read_text(encoding="utf-8").strip() or None
+        except Exception:
+            pass
+        return None
+
+    def _write_persisted_file_id(self, file_id: str) -> None:
+        p = Path(self._persisted_file_id_path())
+        try:
+            # Only write the persisted id when explicitly enabled via env var.
+            use_persist = str(os.environ.get("DRIVE_USE_PERSISTED_ID", "")).lower() in ("1", "true", "yes")
+            if not use_persist:
+                return
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(str(file_id), encoding="utf-8")
+        except Exception:
+            # best-effort only; don't fail the upload if writing the id fails
+            pass
+
+    def _update_sheet_from_csv(self, file_id: str, csv_bytes: bytes, drive_filename: str) -> Dict:
+        """Update an existing native Google Sheet (preserve file id) using the Sheets API.
+
+        This method WILL NOT delete or recreate the spreadsheet. It will clear the first sheet
+        and write the CSV contents into it. Raises Exception on failure so callers can handle it.
+        """
+        logger = logging.getLogger(__name__)
+        sheets_service = build("sheets", "v4", credentials=self.creds)
+        # get first sheet title
+        meta = sheets_service.spreadsheets().get(spreadsheetId=file_id, fields="sheets(properties(title)),spreadsheetUrl").execute()
+        sheets_info = meta.get("sheets", [])
+        sheet_title = "Sheet1"
+        if sheets_info:
+            sheet_title = sheets_info[0].get("properties", {}).get("title", "Sheet1")
+
+        decoded = csv_bytes.decode("utf-8")
+        rdr = csv.reader(io.StringIO(decoded))
+        values = [r for r in rdr]
+
+        range_name = f"'{sheet_title}'"
+        # Clear and update
+        sheets_service.spreadsheets().values().clear(spreadsheetId=file_id, range=range_name).execute()
+        result = sheets_service.spreadsheets().values().update(
+            spreadsheetId=file_id,
+            range=range_name,
+            valueInputOption="RAW",
+            body={"values": values},
+        ).execute()
+        # return metadata similar to the other branches
+        return {"id": file_id, "name": drive_filename, "webViewLink": meta.get("spreadsheetUrl")}
+
     def upload_or_replace(self, name: str, rows: Iterable[Dict[str, object]]) -> Dict:
         rows = list(rows)
         if not rows:
@@ -145,6 +211,15 @@ class DriveStorage:
             q += f" and '{self.folder_id}' in parents"
         res = self.service.files().list(q=q, fields="files(id,name,webViewLink)", includeItemsFromAllDrives=True, supportsAllDrives=True).execute()
         files = res.get("files", [])
+        # support reset behavior
+        reset_mode = str(os.environ.get('DRIVE_RESET_ON_UPLOAD', '')).lower() in ('1', 'true', 'yes')
+        if reset_mode and files:
+            for f in files:
+                try:
+                    self.service.files().delete(fileId=f.get('id'), supportsAllDrives=True).execute()
+                except Exception:
+                    pass
+            files = []
         if files:
             file_id = files[0]["id"]
             updated = self.service.files().update(fileId=file_id, media_body=media, fields="id,name,webViewLink", supportsAllDrives=True).execute()
@@ -165,6 +240,15 @@ class DriveStorage:
             q += f" and '{self.folder_id}' in parents"
         res = self.service.files().list(q=q, fields="files(id,name,webViewLink)", includeItemsFromAllDrives=True, supportsAllDrives=True).execute()
         files = res.get("files", [])
+        # support reset behavior
+        reset_mode = str(os.environ.get('DRIVE_RESET_ON_UPLOAD', '')).lower() in ('1', 'true', 'yes')
+        if reset_mode and files:
+            for f in files:
+                try:
+                    self.service.files().delete(fileId=f.get('id'), supportsAllDrives=True).execute()
+                except Exception:
+                    pass
+            files = []
         if files:
             file_id = files[0]["id"]
             updated = self.service.files().update(fileId=file_id, media_body=media, fields="id,name,webViewLink", supportsAllDrives=True).execute()
@@ -203,27 +287,116 @@ class DriveStorage:
         q = f"name='{drive_filename}' and trashed=false"
         if self.folder_id:
             q += f" and '{self.folder_id}' in parents"
+        # Support an optional reset mode where existing files are deleted before
+        # creating new ones. This is controlled by the environment variable
+        # DRIVE_RESET_ON_UPLOAD (truthy values: '1', 'true', 'yes'). When set,
+        # we remove any existing files matching the name and clear the persisted id
+        # to force creation of a fresh sheet.
+        reset_mode = str(os.environ.get('DRIVE_RESET_ON_UPLOAD', '')).lower() in ('1', 'true', 'yes')
+
+        # If reset requested and a persisted file exists, attempt to delete it.
+        if reset_mode:
+            persisted_id = self._read_persisted_file_id()
+            if persisted_id:
+                try:
+                    self.service.files().delete(fileId=persisted_id, supportsAllDrives=True).execute()
+                except Exception:
+                    # ignore delete errors; continue to attempt name-based deletions
+                    pass
+                # clear persisted id file so we don't reuse a deleted id
+                try:
+                    self._write_persisted_file_id('')
+                except Exception:
+                    pass
+
+        # If user has persisted a file id, prefer updating that file directly (avoids duplicate creations)
+        persisted_id = self._read_persisted_file_id()
+        if persisted_id:
+            try:
+                # retrieve metadata to check mime type
+                file = self.service.files().get(fileId=persisted_id, fields="id,name,mimeType,webViewLink,parents", supportsAllDrives=True).execute()
+                mime = file.get("mimeType")
+                # If native sheet, update in-place; otherwise attempt an update of the bytes
+                if mime == "application/vnd.google-apps.spreadsheet":
+                    updated = self._update_sheet_from_csv(persisted_id, csv_bytes, drive_filename)
+                    return updated
+                else:
+                    media_update = MediaIoBaseUpload(io.BytesIO(csv_bytes), mimetype="text/csv")
+                    updated = self.service.files().update(fileId=persisted_id, media_body=media_update, fields="id,name,webViewLink", supportsAllDrives=True).execute()
+                    return updated
+            except Exception:
+                # If persisted id is invalid or update fails, fall back to name-based lookup/creation
+                pass
+
         # include mimeType so we can decide whether to convert to native Sheet
         res = self.service.files().list(q=q, fields="files(id,name,mimeType,webViewLink,parents)", includeItemsFromAllDrives=True, supportsAllDrives=True).execute()
         files = res.get("files", [])
+        # If reset mode requested: delete any name-matching files found
+        if reset_mode and files:
+            for f in files:
+                try:
+                    self.service.files().delete(fileId=f.get('id'), supportsAllDrives=True).execute()
+                except Exception:
+                    pass
+            # clear files list to force creation below
+            files = []
         if files:
             file = files[0]
             file_id = file.get("id")
             mime = file.get("mimeType")
-            # If existing file is already a Google Sheet, update it in-place
+            # If existing file is already a Google Sheet, try to update it in-place
             if mime == "application/vnd.google-apps.spreadsheet":
-                updated = self.service.files().update(fileId=file_id, media_body=media, fields="id,name,webViewLink", supportsAllDrives=True).execute()
-                return updated
-            else:
-                # Delete the old CSV (to avoid duplicates) then create a new native Google Sheet
+                # For a DB-like spreadsheet we must update in-place to preserve the file ID.
                 try:
-                    self.service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
+                    updated = self._update_sheet_from_csv(file_id, csv_bytes, drive_filename)
+                    # persist the id so future runs update the same file
+                    try:
+                        self._write_persisted_file_id(file_id)
+                    except Exception:
+                        pass
+                    return updated
                 except Exception:
-                    # ignore deletion errors and fall back to creating a new file
+                    # If the in-place update fails, we raise so the caller can decide; do not delete/recreate silently.
+                    raise
+
+        # Create a native Google Sheet using the Sheets API, then populate it and (optionally) move into folder
+        try:
+            sheets_service = build("sheets", "v4", credentials=self.creds)
+            sheet_body = {"properties": {"title": drive_filename}}
+            ss = sheets_service.spreadsheets().create(body=sheet_body, fields="spreadsheetId,spreadsheetUrl").execute()
+            spreadsheet_id = ss.get("spreadsheetId")
+            # Move the spreadsheet into the target folder if provided
+            if self.folder_id and spreadsheet_id:
+                try:
+                    # fetch current parents
+                    file_meta = self.service.files().get(fileId=spreadsheet_id, fields="parents", supportsAllDrives=True).execute()
+                    prev_parents = ",".join(file_meta.get("parents", []) or [])
+                    self.service.files().update(
+                        fileId=spreadsheet_id,
+                        addParents=self.folder_id,
+                        removeParents=prev_parents,
+                        fields="id,parents",
+                        supportsAllDrives=True,
+                    ).execute()
+                except Exception:
+                    # best-effort; continue even if moving fails
                     pass
 
-        # Create a native Google Sheet by uploading the CSV bytes and setting mimeType to spreadsheet
-        metadata = {"name": drive_filename, "mimeType": "application/vnd.google-apps.spreadsheet"}
+            # Populate the new spreadsheet with our CSV contents
+            if spreadsheet_id:
+                updated_meta = self._update_sheet_from_csv(spreadsheet_id, csv_bytes, drive_filename)
+                # Persist the created file id so future runs can update the same file (opt-in)
+                try:
+                    self._write_persisted_file_id(spreadsheet_id)
+                except Exception:
+                    pass
+                return updated_meta
+        except Exception:
+            # If Sheets API creation fails, fall back to Drive create with CSV upload (may create a binary CSV file)
+            pass
+
+        # Fallback: upload as a plain CSV file (not converted)
+        metadata = {"name": drive_filename}
         if self.folder_id:
             metadata["parents"] = [self.folder_id]
         created = self.service.files().create(body=metadata, media_body=media, fields="id,name,webViewLink,parents,mimeType", supportsAllDrives=True).execute()

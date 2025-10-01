@@ -40,7 +40,7 @@ def main():
     token_path = os.environ.get("DRIVE_OAUTH_TOKEN_PATH", ".credentials/drive_token.json")
     print("Using client secrets:", client)
     print("Saving token to:", token_path)
-    creds = _ensure_creds(client, token_path)
+    creds = _ensure_creds(client, token_path, interactive=True)
     print("Done. You can now run scripts that use DriveStorage.from_env().")
 
 
