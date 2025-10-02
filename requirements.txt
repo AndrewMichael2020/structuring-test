@@ -36,3 +36,7 @@ google-auth-oauthlib
 # PY
 
 # python main.py --urls-file urls.txt --mode text-only --batch-size 3
+
+# USeful git commands here:
+# git status --porcelain -b
+# git push origin HEAD:main --force

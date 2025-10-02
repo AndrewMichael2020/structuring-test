@@ -55,6 +55,24 @@ def _postprocess(obj: dict) -> dict:
         'anchor_failure_boolean': bool,
         'extraction_confidence_score': float,
         'accident_causes': dict,
+            # ---- Extended optional fields ----
+            'route_confidence_score': float,
+            'route_candidates': list,
+            'route_aliases': list,
+            'route_grade_systems': list,
+            'route_grades': list,
+            'location': dict,
+            'events': list,
+            'event_chain_types': list,
+            'anchors': list,
+            'cause_layers': dict,
+            'provenance': list,
+            'confidences': dict,
+            'counterfactuals': list,
+            'derived_metrics': dict,
+            'activity_specific': dict,
+            'consensus_state': str,
+            'related_incident_ids': list,
     }
 
     out: dict = {}
@@ -337,6 +355,19 @@ def _postprocess(obj: dict) -> dict:
 
         return outc
 
+    # Helper: sanitize list of dicts with minimal structure
+    def keep_list_of_dicts(k, v):
+        if isinstance(v, list):
+            cleaned = []
+            for it in v:
+                if isinstance(it, dict):
+                    # prune empty strings
+                    it2 = {ik: iv for ik, iv in it.items() if not (isinstance(iv, str) and not iv.strip())}
+                    if it2:
+                        cleaned.append(it2)
+            if cleaned:
+                out[k] = cleaned
+
     for k, v in obj.items():
         if k not in expected:
             if isinstance(v, str) and v.strip():
@@ -374,12 +405,24 @@ def _postprocess(obj: dict) -> dict:
                 if people_out:
                     out['people'] = people_out
             else:
-                keep_list_of_str(k, v)
+                # If it's a list of strings keep as list[str]; if a single string, wrap into list.
+                if isinstance(v, list):
+                    if all(isinstance(x, str) for x in v):
+                        keep_list_of_str(k, v)
+                    else:
+                        keep_list_of_dicts(k, v)
+                elif isinstance(v, str):
+                    keep_list_of_str(k, v)
+                else:
+                    keep_list_of_dicts(k, v)
         elif typ is dict:
             if k == 'accident_causes':
                 cleaned = _clean_causes(v)
                 if cleaned:
                     out[k] = cleaned
+            else:
+                if isinstance(v, dict) and v:
+                    out[k] = v
 
     for dk in ('article_date_published', 'accident_date', 'missing_since', 'recovery_date'):
         if dk in out:
@@ -403,6 +446,26 @@ def _postprocess(obj: dict) -> dict:
         if out['num_fatalities'] > out['num_people_involved']:
             logger.warning('⚠️  num_fatalities > num_people_involved; leaving values but check source')
 
+    # Clamp route_confidence_score to [0,1]
+    if 'route_confidence_score' in out:
+        try:
+            rc = float(out['route_confidence_score'])
+            out['route_confidence_score'] = max(0.0, min(1.0, rc))
+        except Exception:
+            out.pop('route_confidence_score', None)
+
+    # Normalize confidences dict values to [0,1]
+    if isinstance(out.get('confidences'), dict):
+        cd = {}
+        for ck, cv in out['confidences'].items():
+            try:
+                cd[ck] = max(0.0, min(1.0, float(cv)))
+            except Exception:
+                continue
+        if cd:
+            out['confidences'] = cd
+        else:
+            out.pop('confidences', None)
     return out
 
 

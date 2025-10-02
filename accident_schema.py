@@ -118,6 +118,91 @@ accident_causes schema (omit any sub-keys you cannot support with evidence):
 }
 """
 
+# ---- Optional extended fields (omit when not supported by evidence) ----
+_SCHEMA_TEXT += """
+
+Optional route inference (names only, no external gazetteer calls):
+    route_confidence_score (0-1 float),
+    route_candidates (array of {name, confidence (0-1), evidence_pointer}),
+    route_aliases (array of strings),
+    route_grade_systems (array of strings; e.g., YDS, WI, M, alpine,
+        scramble_class, ski_steepness),
+    route_grades (array of strings; e.g., 5.7, WI3, M4, AD, Class 3, 45°)
+
+Optional geo block (keep simple; only if explicitly present/inferable):
+    location: { lat (float), lon (float), elevation_m (float),
+                geocode_confidence (0-1 float) }
+
+Optional event chain (generalized across activities):
+    events: [
+        {
+          type (string; e.g., APPROACH|ASCENT|CRUX|DECISION_DESCENT|RAPPEL|FALL|SELF_RESCUE|SAR_DEPLOYMENT|... ),
+          ts_iso (ISO datetime string),
+          approx_time (bool),
+          actor (string),
+          pitch_number (int),
+          slope_angle_deg (float),
+          aspect_cardinal (N|NE|E|SE|S|SW|W|NW|unknown),
+          rope_team_id (string),
+          anchor_id (string),
+          description (string),
+          evidence_pointer (string)
+        }
+    ],
+    event_chain_types: [string]
+
+Optional anchors (if article mentions specific protection points):
+    anchors: [
+        { id, kind, points (int), equalized (bool), condition, redundant (bool),
+          notes, evidence_pointer }
+    ]
+
+Expanded cause analysis:
+    cause_layers: {
+        proximate_causes: [string],
+        failure_modes: [string],
+        contributing_factors: {
+            technical: [string], environmental: [string],
+            human_individual: [string], human_team: [string],
+            organizational: [string]
+        },
+        heuristic_traps: [string],
+        uncertainties_list: [string],
+        evidence: [{ field, pointer, type, verbatim }],
+        classification: { primary, secondary: [string], narrative_summary }
+    }
+
+Provenance and confidences (light-weight):
+    provenance: [{ field, type, pointer, verbatim }],
+    confidences: { arbitrary_field_name: 0-1 float, ... }
+
+Counterfactuals (avoidability centered; use sparingly and only if stated or strongly implied):
+    counterfactuals: [
+        { topic, original_state, alternative_state, avoidability,
+          expected_effect_on_outcome, rationale, confidence (0-1),
+          preventability_score (0-1), cost_complexity, downside_tradeoffs }
+    ]
+
+Derived metrics (best-effort when explicitly supported):
+    derived_metrics: {
+        fall_distance_m_est (float), assumed_climber_mass_kg (int),
+        fall_energy_joules_est (float), daylight_remaining_min_est (float),
+        weather_deteriorating_boolean (bool), freezing_level_trend_m_24h (int),
+        wind_speed_trend_12h_ms (int), avalanche_context (object),
+        slope_angle_deg_est (float), aspect_cardinal (string),
+        terrain_exposure_class (string), computation_notes (string)
+    }
+
+Activity-specific (optional, only if present):
+    activity_specific: object with optional sub-objects like 'rock', 'ice',
+        'mixed', 'alpine_snow', 'ski', 'glacier', 'hiking_scrambling',
+        'snowmobile', 'heli_ski'.
+
+Consensus and relations:
+    consensus_state (agree|disagree|unknown),
+    related_incident_ids (array of strings)
+"""
+
 _PROMPT = """
 System: You are a precise information extraction assistant. Return VALID JSON
 only, no prose, no markdown fences. Do NOT invent details.
@@ -138,7 +223,7 @@ PRE-EXTRACTED:
 ARTICLE:
 {ARTICLE}
 
-Return one JSON object.
+Return one JSON object. Omit any fields you cannot support with evidence.
 """
 
 __all__ = ["_SCHEMA_TEXT", "_PROMPT"]

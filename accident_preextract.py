@@ -173,6 +173,17 @@ def pre_extract_fields(text: str) -> dict:
         except Exception:
             pass
 
+    # slope angle (degrees) and aspect tokens for snow/ski contexts
+    slope_m = re.search(r"(\d{1,2})\s*(?:degrees?|°)\b", text, flags=re.IGNORECASE)
+    if slope_m:
+        try:
+            out['slope_angle_deg_pre'] = float(slope_m.group(1))
+        except Exception:
+            pass
+    aspect_m = re.search(r"\b(N|NE|E|SE|S|SW|W|NW)\b(?:[- ]?facing| aspect)?", text, flags=re.IGNORECASE)
+    if aspect_m:
+        out['aspect_cardinal_pre'] = aspect_m.group(1).upper()
+
     return out
 
 

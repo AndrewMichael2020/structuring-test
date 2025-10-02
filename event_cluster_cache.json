@@ -1,0 +1,40 @@
+{
+  "77a79e79ecc529b4077e625223b5a9ad": [
+    {
+      "cluster_id": 0,
+      "indices": [
+        0,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "indices": [
+        2,
+        3,
+        4,
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "indices": [
+        12
+      ]
+    }
+  ]
+}
