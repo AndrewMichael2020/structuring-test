@@ -17,24 +17,127 @@ playwright/.local-browsers/
 # Artifacts (captions + images)
 artifacts/
 
+# Events, enriched/fused reports and generated frontend report outputs
+events/
+events/**
+
+# Frontend / Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.cache/
+.vite/
+
 # Logs / temp
 *.log
 *.tmp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+nohup.out
+
+# Tailwind / PostCSS / build caches
+.cache/
+.parcel-cache/
+
+# Test / coverage / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+
+# Editor / OS
+*.DS_Store
 .DS_Store
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
 
-# Jupyter checkpoints (if you use notebooks in Codespaces)
-.ipynb_checkpoints/
-
-# Ignore extracted assets
-artifacts/
-
-# Local environment file (store secrets like OPENAI_API_KEY here)
+# Local env / credentials
 .env
-
-# Local Google/Drive credentials (tokens, persisted file ids)
+.env.local
+.env.*.local
 .credentials/
+.google-credentials.json
 
-# Database files
+# Misc
 *.db
 artifacts.db
+.cache/
+tmp/
+```// filepath: /workspaces/structuring-test/.gitignore
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environments
+.venv/
+env/
+venv/
+myenv/
+
+# Playwright browser binaries
+playwright/.local-browsers/
+
+# Artifacts (captions + images)
+artifacts/
+
+# Events, enriched/fused reports and generated frontend report outputs
+events/
+events/**
+
+# Frontend / Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.cache/
+.vite/
+
+# Logs / temp
+*.log
+*.tmp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+nohup.out
+
+# Tailwind / PostCSS / build caches
+.cache/
+.parcel-cache/
+
+# Test / coverage / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+
+# Editor / OS
+*.DS_Store
+.DS_Store
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Local env / credentials
+.env
+.env.local
+.env.*.local
+.credentials/
+.google-credentials.json
+
+# Misc
+*.db
 artifacts.db
+.cache/
+tmp/
