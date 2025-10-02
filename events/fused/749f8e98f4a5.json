@@ -303,7 +303,7 @@
       "publisher": "NBC News",
       "extracted_at": "2025-10-01T10:28:27-07:00",
       "extraction_confidence_score": 0.64,
-      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_172734/accident_info.json",
+      "__file_path": "/artifacts/nbcnews_com/20251001_172734/accident_info.json",
       "reported_key_points": [
         "Apparent anchor failure; initial ~200 ft fall + ~200 ft slide",
         "Names, ages, and hometowns of all four climbers",
@@ -318,7 +318,7 @@
       "publisher": "NBC News",
       "extracted_at": "2025-10-01T14:36:29-07:00",
       "extraction_confidence_score": 0.55,
-      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_213244/accident_info.json",
+      "__file_path": "/artifacts/nbcnews_com/20251001_213244/accident_info.json",
       "reported_key_points": [
         "Region and mountain name details",
         "Counts (4 involved, 3 fatalities, 1 injured)",
@@ -331,7 +331,7 @@
       "publisher": "NBC News",
       "extracted_at": "2025-10-01T16:22:34-07:00",
       "extraction_confidence_score": 0.55,
-      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_162125/accident_info.json",
+      "__file_path": "/artifacts/nbcnews_com/20251001_162125/accident_info.json",
       "reported_key_points": [
         "Pre-extracted route/equipment/fall metrics corroborating other sources"
       ]
@@ -342,7 +342,7 @@
       "source_name": "The Associated Press",
       "extracted_at": "2025-10-01T16:46:48-07:00",
       "extraction_confidence_score": 0.55,
-      "__file_path": "/workspaces/structuring-test/artifacts/columbian_com/20251001_164427/accident_info.json",
+      "__file_path": "/artifacts/columbian_com/20251001_164427/accident_info.json",
       "reported_key_points": [
         "Approximate 400 ft fall",
         "Survivor called 911 from a payphone about 40 miles away",
@@ -357,7 +357,7 @@
       "publisher": "Climbing",
       "extracted_at": "2025-10-01T14:31:18-07:00",
       "extraction_confidence_score": 0.34,
-      "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_212657/accident_info.json",
+      "__file_path": "/artifacts/climbing_com/20251001_212657/accident_info.json",
       "reported_key_points": [
         "Accident date: Saturday, May 10",
         "Route: Early Winter Couloir (AI3 M4+); ~1,100 ft line",
@@ -373,7 +373,7 @@
       "publisher": "Climbing",
       "extracted_at": "2025-10-01T16:22:34-07:00",
       "extraction_confidence_score": 0.34,
-      "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_162126/accident_info.json",
+      "__file_path": "/artifacts/climbing_com/20251001_162126/accident_info.json",
       "reported_key_points": [
         "Pre-extracted equipment (piton, anchor, rope) and fall metrics corroborating narrative"
       ]

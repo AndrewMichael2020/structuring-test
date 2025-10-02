@@ -180,6 +180,29 @@ def _sig(*objs: Any) -> str:
     return m.hexdigest()
 
 
+def _normalize_repo_relative_paths(obj: Any) -> Any:
+    """Walk the object and normalize any absolute file paths under this repo
+    to repo-root-relative form, e.g., '/artifacts/...' instead of
+    '/workspaces/structuring-test/artifacts/...'.
+    """
+    prefix = str(BASE_DIR)
+    def norm_str(s: str) -> str:
+        if s.startswith(prefix):
+            rel = s[len(prefix):]
+            # ensure it starts with '/'
+            if not rel.startswith('/'):
+                rel = '/' + rel
+            return rel
+        return s
+    if isinstance(obj, dict):
+        return {k: _normalize_repo_relative_paths(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_normalize_repo_relative_paths(v) for v in obj]
+    if isinstance(obj, str):
+        return norm_str(obj)
+    return obj
+
+
 def merge_event(eid: str, paths: List[Path], dry_run: bool, merge_cache: Dict[str, Any]) -> dict | None:
     recs = _load_group_records(paths)
     if not recs:
@@ -229,6 +252,8 @@ def merge_event(eid: str, paths: List[Path], dry_run: bool, merge_cache: Dict[st
                     enriched = _deterministic_merge(baseline, ocr_use)
             else:
                 enriched = _deterministic_merge(baseline, ocr_use)
+            # normalize any file paths before caching/writing
+            enriched = _normalize_repo_relative_paths(enriched)
             merge_cache[key] = enriched
     # write
     if not dry_run:
@@ -295,9 +320,12 @@ def fuse_event(eid: str, enriched: dict, recs: List[dict], dry_run: bool, fuse_c
                 except Exception:
                     pass
                 fused = json.loads(resp.choices[0].message.content.strip())
+                fused = _normalize_repo_relative_paths(fused)
                 fuse_cache[key] = fused
             except Exception:
                 pass
+    # Always normalize (covers deterministic path and cache hit as well)
+    fused = _normalize_repo_relative_paths(fused)
     if not dry_run:
         FUSED_DIR.mkdir(parents=True, exist_ok=True)
         outp = FUSED_DIR / f"{eid}.json"

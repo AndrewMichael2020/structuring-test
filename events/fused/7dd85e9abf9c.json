@@ -1,56 +1,56 @@
 {
-  "num_people_involved": 2,
-  "extraction_confidence_score": 0.85,
-  "article_title": "Climber rescued on Mount Test",
-  "mountain_name": "Mount Test",
-  "extracted_at": "2025-01-01T00:00:00Z",
-  "timeline_text": "Incident occurred around 3 PM.",
-  "activity_type": "climbing",
-  "article_date_published": "2025-01-01",
-  "event_id": "7dd85e9abf9c",
-  "rescue_teams_involved": [
-    "Squamish SAR"
-  ],
-  "family_statements": "Family thanks rescuers.",
   "people": [
     {
       "name": "Jane Doe",
       "age": 34
     }
   ],
+  "route_name": "North Ridge",
+  "num_fatalities": 0,
+  "article_date_published": "2025-01-01",
+  "accident_summary_text": "A brief summary of the incident.",
+  "official_reports_links": [],
+  "extracted_at": "2025-01-01T00:00:00Z",
   "notable_equipment_details": "Anchor inspected.",
-  "quoted_dialogue": [
-    "We are grateful for the rescue."
-  ],
   "photo_urls": [
     "https://example.com/photo1.jpg"
   ],
-  "region": "BC Coast Mountains",
-  "official_reports_links": [],
-  "num_rescued": 1,
-  "source_url": "https://example.com/tavily/test",
+  "family_statements": "Family thanks rescuers.",
   "anchor_failure_boolean": false,
+  "accident_date": "2025-01-01",
+  "accident_type": "fall",
   "response_agencies": [
     "RCMP"
   ],
-  "article_text": "Sample article text for mapping test.",
-  "route_name": "North Ridge",
-  "accident_date": "2025-01-01",
-  "fundraising_links": [],
-  "scraped_full_text": "Full sample text.",
-  "self_rescue_boolean": false,
-  "__file_path": "/workspaces/structuring-test/artifacts/tavily_test/accident_info.json",
-  "accident_type": "fall",
-  "num_fatalities": 0,
-  "rescue_method": "helicopter hoist",
-  "related_articles_urls": [],
-  "video_urls": [],
-  "accident_summary_text": "A brief summary of the incident.",
-  "accident_time_approx": "afternoon",
-  "fall_height_meters_estimate": 12.5,
-  "bodies_recovery_method": "n/a",
-  "response_difficulties": "High winds",
+  "timeline_text": "Incident occurred around 3 PM.",
   "local_expert_commentary": "Conditions were icy.",
-  "source_name": "Example News",
-  "num_injured": 1
+  "activity_type": "climbing",
+  "extraction_confidence_score": 0.85,
+  "accident_time_approx": "afternoon",
+  "rescue_teams_involved": [
+    "Squamish SAR"
+  ],
+  "quoted_dialogue": [
+    "We are grateful for the rescue."
+  ],
+  "num_people_involved": 2,
+  "related_articles_urls": [],
+  "source_url": "https://example.com/tavily/test",
+  "rescue_method": "helicopter hoist",
+  "num_rescued": 1,
+  "num_injured": 1,
+  "video_urls": [],
+  "self_rescue_boolean": false,
+  "response_difficulties": "High winds",
+  "event_id": "7dd85e9abf9c",
+  "region": "BC Coast Mountains",
+  "__file_path": "/artifacts/tavily_test/accident_info.json",
+  "article_text": "Sample article text for mapping test.",
+  "fall_height_meters_estimate": 12.5,
+  "article_title": "Climber rescued on Mount Test",
+  "fundraising_links": [],
+  "bodies_recovery_method": "n/a",
+  "scraped_full_text": "Full sample text.",
+  "mountain_name": "Mount Test",
+  "source_name": "Example News"
 }

@@ -54,49 +54,49 @@
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T11:57:52-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T12:26:57-07:00",
       "extraction_confidence_score": 0.46,
-      "__file_path": "/workspaces/structuring-test/artifacts/test_run_fix/accident_info.json"
+      "__file_path": "/artifacts/test_run_fix/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T11:00:39-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T10:30:54-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_172950/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_172950/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T08:47:07-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T08:46:13-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154600/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_154600/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T09:38:19-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
     },
     {
       "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
       "extracted_at": "2025-10-01T08:50:56-07:00",
       "extraction_confidence_score": 0.52,
-      "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+      "__file_path": "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
     }
   ],
   "conflicts": {
@@ -106,13 +106,13 @@
         {
           "value": "climbing",
           "sources": [
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
           ]
         }
       ]
@@ -123,8 +123,8 @@
         {
           "value": "descent for help",
           "sources": [
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
-            "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
           ]
         }
       ]
@@ -135,7 +135,7 @@
         {
           "value": "fatality",
           "sources": [
-            "/workspaces/structuring-test/artifacts/test_run_fix/accident_info.json"
+            "/artifacts/test_run_fix/accident_info.json"
           ]
         }
       ]
