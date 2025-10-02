@@ -1,0 +1,37 @@
+{
+  "extracted_at": "2025-10-01T11:57:52-07:00",
+  "article_text": "Climber falls over 3,000 feet to his death off tallest mountain in North America He fell over half a mile and his body was recovered two days later. The body of a 41-year-old ski mountaineer has been recovered after he fell over 3,000 feet off of Mount McKinley, the tallest mountain in North America, officials said. Alex Chiu of Seattle, Washington, was on the Mount McKinley West Buttress climbing route on the Peters Glacier when he fell on Monday, according to a statement from the National Park Service. MORE: 3 plane crash survivors plucked from Atlantic Ocean at night after plane goes down off Florida coast “On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell at a location known as Squirrel Point towards the Peters Glacier, an exposed rocky and serac covered 3000-foot face,” officials said. “After witnessing the fall, the reporting party lowered over the edge as far as possible but was unable to see or hear Chiu. They then descended the West Buttress route for additional help before proceeding to Camp 1.”",
+  "scraped_full_text": "Climber falls over 3,000 feet to his death off tallest mountain in North America Climber falls over 3,000 feet to his death off tallest mountain in North America He fell over half a mile and his body was recovered two days later. The body of a 41-year-old ski mountaineer has been recovered after he fell over 3,000 feet off of Mount McKinley, the tallest mountain in North America, officials said. Alex Chiu of Seattle, Washington, was on the Mount McKinley West Buttress climbing route on the Peters Glacier when he fell on Monday, according to a statement from the National Park Service. MORE: 3 plane crash survivors plucked from Atlantic Ocean at night after plane goes down off Florida coast “On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell at a location known as Squirrel Point towards the Peters Glacier, an exposed rocky and serac covered 3000-foot face,” officials said. “After witnessing the fall, the reporting party lowered over the edge as far as possible but was unable to see or hear Chiu. They then descended the West Buttress route for additional help before proceeding to Camp 1.” Due to high winds and snow, ground and air search was unable to access the accident site until the early morning hours of Wednesday morning, according to the National Park Service. MORE: 61-year-old man survives being pinned down by 700-pound boulder for 3 hours in Alaska creek MORE: 6 gray whales have died in San Francisco in the past week as authorities scramble for answers “Clearing weather on the north side of the Alaska Range provided the opportunity for two mountaineering rangers to depart Talkeetna for an ariel helicopter search to locate and recover the body,” officials said. Hegseth rails against 'woke,' lays out standards in speech to top generals Government shutdown updates: Vance says he doesn't think shutdown will last long Sniper opens fire on Dallas ICE facility, killing 1 detainee, wounding 2: DHS After the 41-year-old’s body was recovered from the more than half a mile fall, rangers returned to Denali National Park and Preserve headquarters where his body was transferred to the state medical examiner, park officials said. In 2010, an un-roped French mountaineer fell to his death near this same location towards the Peters Glacier. His body was never recovered. MORE: Tourists at beach house find human remains dating back 200 years There are currently an estimated 500 climbers on the mountain and the climbing season typically begins in early May and ends in early July. The investigation into the fall is currently open and ongoing.",
+  "region": "North America",
+  "mountain_name": "Mount McKinley",
+  "route_name": "West Buttress",
+  "activity_type": "climbing",
+  "accident_type": "fall",
+  "accident_date": "2023-06-02",
+  "num_people_involved": 3,
+  "num_fatalities": 1,
+  "num_injured": 0,
+  "num_rescued": 0,
+  "people": [
+    {
+      "name": "Alex Chiu",
+      "age": 41,
+      "outcome": "deceased"
+    }
+  ],
+  "response_agencies": [
+    "National Park Service"
+  ],
+  "rescue_method": "body recovery",
+  "response_difficulties": "unable to see or hear Chiu after the fall",
+  "bodies_recovery_method": "recovered two days later",
+  "accident_summary_text": "Climber falls over 3,000 feet to his death off tallest mountain in North America.",
+  "timeline_text": "On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell.",
+  "fall_height_meters_estimate": 914.4,
+  "self_rescue_boolean": false,
+  "anchor_failure_boolean": false,
+  "extraction_confidence_score": 0.52,
+  "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+  "event_id": "1976c2189c78",
+  "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+}

@@ -52,11 +52,7 @@ BASE_DIR = Path(__file__).parent
 ARTIFACTS_DIR = BASE_DIR / 'artifacts'
 CACHE_PATH = BASE_DIR / 'event_cluster_cache.json'
 
-try:
-    # Optional override via config.json
-    from config import EVENT_CLUSTER_MODEL  # type: ignore
-except Exception:
-    EVENT_CLUSTER_MODEL = 'gpt-5-mini'
+from config import EVENT_CLUSTER_MODEL  # type: ignore
 
 
 def _iter_accident_jsons(root: Path) -> List[Path]:
@@ -142,12 +138,22 @@ def _cluster_prompt(records: List[dict]) -> str:
 def cluster_with_llm(records: List[dict]) -> List[dict] | None:
     if not _OPENAI_AVAILABLE or not can_make_call():
         return None
+    # Track token usage across this service run
+    global _TOKEN_COUNTS
     messages = [
         {"role": "system", "content": "You are a clustering assistant that outputs STRICT JSON only."},
         {"role": "user", "content": [{"type": "text", "text": _cluster_prompt(records)}]},
     ]
     try:
         resp = _llm_chat_create(messages=messages, model=EVENT_CLUSTER_MODEL)
+        try:
+            # accumulate token usage if available
+            usage = getattr(resp, 'usage', None)
+            if usage is not None:
+                _TOKEN_COUNTS['prompt'] += int(getattr(usage, 'prompt_tokens', 0) or 0)
+                _TOKEN_COUNTS['completion'] += int(getattr(usage, 'completion_tokens', 0) or 0)
+        except Exception:
+            pass
         try:
             record_call(1)
         except Exception:
@@ -249,6 +255,7 @@ def assign_ids_over_artifacts(dry_run: bool = False, cache_clear: bool = False) 
 
 if __name__ == '__main__':
     import argparse
+    _TOKEN_COUNTS = {'prompt': 0, 'completion': 0}
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s')
     parser = argparse.ArgumentParser(description='Assign stable event IDs to accident JSONs by clustering related articles.')
     parser.add_argument('--dry-run', action='store_true', help='Compute and print results but do not write back to files')
@@ -256,4 +263,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     stats = assign_ids_over_artifacts(dry_run=args.dry_run, cache_clear=args.cache_clear)
+    total = _TOKEN_COUNTS['prompt'] + _TOKEN_COUNTS['completion']
     print(f"✅ Assigned event IDs over {stats['files']} files across {stats['clusters']} clusters. Written: {stats['written']}{' (dry-run)' if args.dry_run else ''}.")
+    print(f"[model] event_cluster={EVENT_CLUSTER_MODEL} | tokens: prompt={_TOKEN_COUNTS['prompt']}, completion={_TOKEN_COUNTS['completion']}, total={total}")

@@ -1,0 +1,40 @@
+{
+  "extracted_at": "2025-10-01T10:28:27-07:00",
+  "article_text": "One man, Anton Tselykh, 38, from Seattle, will live to tell the tale of an apparent anchor failure that sent him and his climbing group plunging 200 feet down the North Early Winters Spire area of the Cascades, then sliding uncontrollably another 200 feet down a chute, before collecting as a group, severely injured and tangled in their climbing gear. The Okanogan County Sheriff's Office released the identities of the four men Tuesday. Those that died are Vishnu Irigireddy, 48, from Renton; Tim Nguyen, 63, from Renton; and Oleksander Martynenko, 36, from Bellvue. Those three men suffered massive leg and cranial traumas, Okanogan County Undersheriff David Yarnell told NBC News. Tselykh, somehow, did not have any broken bones, but has internal injuries and head trauma. \"It is truly amazing that he came out with the injuries that he did,\" Yarnell said. Tselykh remains in satisfactory condition Wednesday, said Susan Gregg, director of media relations for UW Medicine. The head trauma, Yarnell said, may have caused Tselykh to become disoriented after the fall, \"and may have led him to make some not-so-good decisions as he tried to self rescue.\" Tselykh passed out after the fall, Yarnell said, and woke up around 10 p.m. — hours after Yarnell estimates the group fell. Instead of using GPS communication devices to get help, Yarnell said Tselykh walked from the climbing area — \"crawling and feeling around in nearly pitch darkness\" — to his car. He then drove west over the mountain range when he should have gone east, to Winthrop, where there would have been emergency services, Yarnell said, noting \"either a lack of knowledge of the area or disorientation to make that decision.\"",
+  "scraped_full_text": "Official says it's 'miraculous' climber survived fall off Washington mountain that killed 3 others Official says it's 'miraculous' climber survived fall off Washington mountain that killed 3 others One mountain climber's survival is being called \"miraculous\" after a 200-foot fall onto jagged rock in Washington state Sunday that killed the three other men in his group. One man, Anton Tselykh, 38, from Seattle, will live to tell the tale of an apparent anchor failure that sent him and his climbing group plunging 200 feet down the North Early Winters Spire area of the Cascades, then sliding uncontrollably another 200 feet down a chute, before collecting as a group, severely injured and tangled in their climbing gear. The Okanogan County Sheriff's Office released the identities of the four men Tuesday. Those that died are Vishnu Irigireddy, 48, from Renton; Tim Nguyen, 63, from Renton; and Oleksander Martynenko, 36, from Bellvue. Those three men suffered massive leg and cranial traumas, Okanogan County Undersheriff David Yarnell told NBC News. Tselykh, somehow, did not have any broken bones, but has internal injuries and head trauma. \"It is truly amazing that he came out with the injuries that he did,\" Yarnell said. Tselykh remains in satisfactory condition Wednesday, said Susan Gregg, director of media relations for UW Medicine. The head trauma, Yarnell said, may have caused Tselykh to become disoriented after the fall, \"and may have led him to make some not-so-good decisions as he tried to self rescue.\" Tselykh passed out after the fall, Yarnell said, and woke up around 10 p.m. — hours after Yarnell estimates the group fell. Instead of using GPS communication devices to get help, Yarnell said Tselykh walked from the climbing area — \"crawling and feeling around in nearly pitch darkness\" — to his car. He then drove west over the mountain range when he should have gone east, to Winthrop, where there would have been emergency services, Yarnell said, noting \"either a lack of knowledge of the area or disorientation to make that decision.\" \"It's pretty amazing. It is definitely amazing,\" Yarnell said. \"The fact that he had a head injury, a severe head injury and internal bleeding, it is just amazing that he was able to make his way back to the highway and then get in his car and drive.\" During the drive, Yarnell said Tselykh collided with a guardrail, becoming unconscious again. Once he woke up for the second time, he continued his drive to his intended destination. Tselykh's survival \"is miraculous to say the least,\" Yarnell said. Yarnell has not spoken to Tselykh to confirm any details, but said officials believe he must have been the person closest to the ground when the anchor point failed and the four men fell, a shorter distance perhaps the reason for his survival. Deep snow cover in the spot Tselykh landed also could have contributed, Yarnell said. A fifth member of the climbing group couldn't join this trip. Yarnell said he's the person who called in a missing persons report when the group was overdue. Yarnell said the climbers were off to a slow start but began their ascent. Around 5:30 p.m. — which Yarnell said is late to be on the mountain — they decided to reverse course as a weather system moved in. \"It seems that they were trying to hurry to get back down the mountain so they were on solid ground before it, before they lost all available lighting,\" Yarnell said. Ultimately, Yarnell said officials believe the group's anchor point, which holds the line used to rappel down a mountain, failed. Tselykh, who spoke from the hospital, confirmed that was the case. He told Cristina Woodworth, who leads the sheriff's search and rescue team, that his group's piton, or metal anchor, that was holding their main line, ripped from the rock, the Associated Press reported . Search and rescue groups found what Yarnell called a \"weathered piton\" still attached to the group's line.",
+  "people": [
+    {
+      "name": "Anton Tselykh",
+      "age": 38,
+      "outcome": "survived",
+      "injuries": "internal injuries and head trauma"
+    },
+    {
+      "name": "Vishnu Irigireddy",
+      "age": 48,
+      "outcome": "deceased",
+      "injuries": "massive leg and cranial traumas"
+    },
+    {
+      "name": "Tim Nguyen",
+      "age": 63,
+      "outcome": "deceased",
+      "injuries": "massive leg and cranial traumas"
+    },
+    {
+      "name": "Oleksander Martynenko",
+      "age": 36,
+      "outcome": "deceased",
+      "injuries": "massive leg and cranial traumas"
+    }
+  ],
+  "accident_type": "climbing accident",
+  "accident_date": "2023-10-03",
+  "fall_height_meters_estimate": 61.0,
+  "self_rescue_boolean": true,
+  "anchor_failure_boolean": true,
+  "extraction_confidence_score": 0.64,
+  "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+  "event_id": "749f8e98f4a5",
+  "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_172734/accident_info.json"
+}

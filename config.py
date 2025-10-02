@@ -19,6 +19,9 @@ Keys:
 - GAZETTEER_ENABLED: bool
 - models.ocr_vision: string (OpenAI vision model)
 - models.accident_info: string (OpenAI text model)
+ - models.event_cluster: string (OpenAI clustering model for event IDs)
+ - models.event_merge: string (OpenAI model for text+OCR merge per event)
+ - models.event_fusion: string (OpenAI model for multi-source fusion per event)
 """
 
 import os
@@ -32,6 +35,9 @@ _DEFAULTS = {
 	"models": {
 		"ocr_vision": "gpt-5",
 		"accident_info": "gpt-5",
+		"event_cluster": "gpt-5-mini",
+		"event_merge": "gpt-5-mini",
+		"event_fusion": "gpt-5",
 	},
 }
 
@@ -70,6 +76,12 @@ if os.getenv('OCR_VISION_MODEL'):
 	_CFG.setdefault('models', {})['ocr_vision'] = os.getenv('OCR_VISION_MODEL')
 if os.getenv('ACCIDENT_INFO_MODEL'):
 	_CFG.setdefault('models', {})['accident_info'] = os.getenv('ACCIDENT_INFO_MODEL')
+if os.getenv('EVENT_CLUSTER_MODEL'):
+	_CFG.setdefault('models', {})['event_cluster'] = os.getenv('EVENT_CLUSTER_MODEL')
+if os.getenv('EVENT_MERGE_MODEL'):
+	_CFG.setdefault('models', {})['event_merge'] = os.getenv('EVENT_MERGE_MODEL')
+if os.getenv('EVENT_FUSION_MODEL'):
+	_CFG.setdefault('models', {})['event_fusion'] = os.getenv('EVENT_FUSION_MODEL')
 
 # Exported constants
 TIMEZONE = _CFG.get('timezone', _DEFAULTS['timezone'])
@@ -79,4 +91,13 @@ OCR_VISION_MODEL = _CFG.get('models', {}).get(
 )
 ACCIDENT_INFO_MODEL = _CFG.get('models', {}).get(
 	'accident_info', _DEFAULTS['models']['accident_info']
+)
+EVENT_CLUSTER_MODEL = _CFG.get('models', {}).get(
+	'event_cluster', _DEFAULTS['models']['event_cluster']
+)
+EVENT_MERGE_MODEL = _CFG.get('models', {}).get(
+	'event_merge', _DEFAULTS['models']['event_merge']
+)
+EVENT_FUSION_MODEL = _CFG.get('models', {}).get(
+	'event_fusion', _DEFAULTS['models']['event_fusion']
 )

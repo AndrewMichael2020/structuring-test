@@ -1,0 +1,56 @@
+{
+  "extracted_at": "2025-01-01T00:00:00Z",
+  "source_url": "https://example.com/tavily/test",
+  "article_text": "Sample article text for mapping test.",
+  "scraped_full_text": "Full sample text.",
+  "source_name": "Example News",
+  "article_title": "Climber rescued on Mount Test",
+  "article_date_published": "2025-01-01",
+  "region": "BC Coast Mountains",
+  "mountain_name": "Mount Test",
+  "route_name": "North Ridge",
+  "activity_type": "climbing",
+  "accident_type": "fall",
+  "accident_date": "2025-01-01",
+  "accident_time_approx": "afternoon",
+  "num_people_involved": 2,
+  "num_fatalities": 0,
+  "num_injured": 1,
+  "num_rescued": 1,
+  "people": [
+    {
+      "name": "Jane Doe",
+      "age": 34
+    }
+  ],
+  "rescue_teams_involved": [
+    "Squamish SAR"
+  ],
+  "response_agencies": [
+    "RCMP"
+  ],
+  "rescue_method": "helicopter hoist",
+  "response_difficulties": "High winds",
+  "bodies_recovery_method": "n/a",
+  "accident_summary_text": "A brief summary of the incident.",
+  "timeline_text": "Incident occurred around 3 PM.",
+  "quoted_dialogue": [
+    "We are grateful for the rescue."
+  ],
+  "notable_equipment_details": "Anchor inspected.",
+  "local_expert_commentary": "Conditions were icy.",
+  "family_statements": "Family thanks rescuers.",
+  "photo_urls": [
+    "https://example.com/photo1.jpg"
+  ],
+  "video_urls": [],
+  "related_articles_urls": [],
+  "fundraising_links": [],
+  "official_reports_links": [],
+  "fall_height_meters_estimate": 12.5,
+  "self_rescue_boolean": false,
+  "anchor_failure_boolean": false,
+  "extraction_confidence_score": 0.85,
+  "event_id": "7dd85e9abf9c",
+  "__file_path": "/workspaces/structuring-test/artifacts/tavily_test/accident_info.json"
+}

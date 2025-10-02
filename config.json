@@ -3,6 +3,9 @@
   "gazetteer_enabled": false,
   "models": {
     "ocr_vision": "gpt-5",
-    "accident_info": "gpt-5"
+    "accident_info": "gpt-5",
+    "event_cluster": "gpt-5-mini",
+    "event_merge": "gpt-5-mini",
+    "event_fusion": "gpt-5"
   }
 }

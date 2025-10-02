@@ -1,0 +1,19 @@
+{
+  "pre_extracted": {
+    "lead_sentences": [
+      "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
+      "Callers to 911 about 4 p.m."
+    ],
+    "route_types_pre": [
+      "wall"
+    ],
+    "fall_height_feet_pre": 300,
+    "fall_height_meters_pre": 91.4
+  },
+  "event_id": "b99834bc19bb",
+  "article_text": "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews. Callers to 911 about 4 p.m. Thursday reported seeing the man fall and hearing cries for help, Andrews said. Your browser is set to private mode. To continue reading, log in or subscribe. Already a subscriber? Log in now.",
+  "__file_path": "/workspaces/structuring-test/artifacts/seattletimes_com/20251001_162126/accident_info.json",
+  "scraped_full_text": "Man dies after 300-foot fall while climbing in Index Man dies after 300-foot fall while climbing in Index A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
+  "extracted_at": "2025-10-01T16:22:34-07:00",
+  "source_url": "https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/"
+}

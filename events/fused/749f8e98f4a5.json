@@ -1,0 +1,382 @@
+{
+  "event_id": "749f8e98f4a5",
+  "canonical_record": {
+    "summary": "Four climbers on the Early Winter Couloir between the North and South Early Winters Spires in Washington Pass fell during a descent after an apparent anchor failure involving a weathered piton. Three climbers died; the survivor, 38-year-old Anton Tselykh of Seattle, sustained internal injuries and head trauma, hiked out in darkness, drove west, and called 911 from a payphone in Newhalem. Bodies were later recovered by helicopter.",
+    "accident_date": "2025-05-10",
+    "accident_time_approx": "Saturday evening; retreat decision around 5:30 p.m.",
+    "location": {
+      "state": "Washington",
+      "region": "Washington Pass, Liberty Bell Group, North Cascades",
+      "mountain_name": "Early Winters Spires",
+      "route_name": "Early Winter Couloir (AI3 M4+)",
+      "location_aliases": [
+        "North Early Winters Spire",
+        "Early Winters Spires",
+        "Washington Pass"
+      ]
+    },
+    "activity_type": "alpine climbing",
+    "activity_type_aliases": [
+      "rock climbing",
+      "climbing"
+    ],
+    "accident_type": "fall during descent due to anchor failure",
+    "anchor_failure_boolean": true,
+    "self_rescue_boolean": true,
+    "counts": {
+      "num_people_involved": 4,
+      "num_fatalities": 3,
+      "num_injured": 1
+    },
+    "fall_details": {
+      "vertical_drop_feet_estimate": 200,
+      "additional_slide_feet_estimate": 200,
+      "total_fall_feet_estimate": 400,
+      "vertical_drop_meters_estimate": 61.0,
+      "total_fall_meters_estimate": 122.0
+    },
+    "environmental_conditions": {
+      "weather": "light snow; storm system moving in",
+      "visibility": "poor",
+      "time_of_day": "evening",
+      "notes": [
+        "Late in the day to be on the mountain per undersheriff"
+      ]
+    },
+    "cause_analysis": {
+      "primary_cause_category": "technical_system_failure",
+      "proximate_causes": [
+        "anchor_failure"
+      ],
+      "anchor_system": {
+        "anchor_type": "piton",
+        "anchor_condition": "weathered/old-looking",
+        "failure_mode": "piton ripped from rock",
+        "backup_anchor_status": "unknown"
+      },
+      "contributing_factors": [
+        "approaching storm",
+        "late hour",
+        "all four attached to the same rope",
+        "use of weathered fixed protection"
+      ],
+      "status": "investigation in progress",
+      "narrative_summary": "A weathered piton used as the main rappel anchor ripped from the rock during descent, precipitating a roughly 400-foot combined fall and slide of all four climbers; three died from trauma and one survived with serious injuries."
+    },
+    "participants": [
+      {
+        "name": "Anton Tselykh",
+        "age": 38,
+        "residence_city": "Seattle",
+        "outcome": "survived",
+        "injuries": [
+          "internal injuries/internal bleeding",
+          "head trauma/traumatic brain injury",
+          "bruises on head",
+          "fluid leaking from ears",
+          "facial injuries",
+          "hand injuries",
+          "rib injuries",
+          "difficulty breathing"
+        ],
+        "notes": [
+          "No broken bones reported",
+          "Initially refused medical attention; later hospitalized",
+          "Reported disorientation after head trauma"
+        ]
+      },
+      {
+        "name": "Vishnu Irigireddy",
+        "age": 48,
+        "residence_city": "Renton",
+        "outcome": "fatality",
+        "injuries": [
+          "severe head (cranial) trauma",
+          "multiple leg fractures"
+        ]
+      },
+      {
+        "name": "Tim Nguyen",
+        "age": 63,
+        "residence_city": "Renton",
+        "outcome": "fatality",
+        "injuries": [
+          "severe head (cranial) trauma",
+          "multiple leg fractures"
+        ]
+      },
+      {
+        "name": "Oleksander Martynenko",
+        "age": 36,
+        "residence_city": "Bellevue",
+        "outcome": "fatality",
+        "injuries": [
+          "severe head (cranial) trauma",
+          "multiple leg fractures"
+        ]
+      }
+    ],
+    "equipment_and_systems": {
+      "critical_gear_present": [
+        "climbing harnesses",
+        "ropes",
+        "removable protection",
+        "piton (fixed)"
+      ],
+      "gps_communication_device_present": true,
+      "gps_communication_device_used": false,
+      "rope_system": {
+        "num_people_on_rope": 4,
+        "roped_for_descent": true
+      }
+    },
+    "response_and_rescue": {
+      "survivor_self_evacuated": true,
+      "survivor_actions": [
+        "extricated from ropes",
+        "hiked out over rock and snow using an ice tool",
+        "reached car in darkness",
+        "drove west over the mountain range",
+        "collided with a guardrail en route",
+        "called 911 from a payphone in Newhalem, WA"
+      ],
+      "call_distance_miles_estimate_range": [
+        40,
+        60
+      ],
+      "agencies": [
+        "Okanogan County Sheriff's Office",
+        "Snohomish County Helicopter Rescue Team",
+        "UW Medicine",
+        "Harborview Medical Center"
+      ],
+      "bodies_recovery_method": "helicopter extraction",
+      "response_difficulties": [
+        "darkness",
+        "disorientation after head trauma",
+        "delayed emergency notification due to survivor driving away from nearest services"
+      ],
+      "medical_status_updates": [
+        "Survivor in satisfactory condition by Wednesday at Harborview Medical Center"
+      ]
+    },
+    "timeline": [
+      "Saturday afternoon: Climbing Early Winter Couloir; lightly snowing",
+      "Around 5:30 p.m.: Team decides to retreat as weather moves in",
+      "During descent: Anchor (weathered piton) fails; all four fall ~200 ft and slide ~200 ft",
+      "Night: Survivor loses consciousness, later wakes around 10 p.m., self-evacuates in darkness",
+      "Overnight to early Sunday: Survivor drives west, collides with guardrail, continues to Newhalem and calls 911",
+      "Subsequent days: Bodies recovered by helicopter; survivor hospitalized and reported satisfactory by Wednesday"
+    ],
+    "other_notes": [
+      "A fifth member could not join the trip and later reported the group overdue",
+      "Officials believe the survivor may have been closest to the ground when the anchor failed, possibly reducing his fall distance"
+    ]
+  },
+  "provenance": {
+    "accident_date": [
+      {
+        "value": "2025-05-10",
+        "sources": [
+          "https://www.climbing.com/news/climbing-fatality-washington/"
+        ]
+      },
+      {
+        "value": "Saturday evening (no date specified)",
+        "sources": [
+          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
+        ]
+      },
+      {
+        "value": "2023-10-03",
+        "sources": [
+          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+        ],
+        "note": "Likely erroneous date; overridden by multiple 2025 sources"
+      }
+    ],
+    "fall_details": {
+      "vertical_200ft_plus_200ft_slide": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "total_approximately_400ft": [
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ]
+    },
+    "anchor_failure": [
+      "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "https://www.climbing.com/news/climbing-fatality-washington/"
+    ],
+    "anchor_condition_weathered_piton": [
+      "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "https://www.climbing.com/news/climbing-fatality-washington/"
+    ],
+    "weather_light_snow_and_storm": [
+      "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+      "https://www.climbing.com/news/climbing-fatality-washington/"
+    ],
+    "participants": {
+      "Anton Tselykh": {
+        "age_38": [
+          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
+        ],
+        "residence_seattle": [
+          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+        ],
+        "injuries_internal_head_trauma_no_broken_bones": [
+          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+        ],
+        "injuries_internal_bleeding_tbi_and_symptoms": [
+          "https://www.climbing.com/news/climbing-fatality-washington/",
+          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
+        ]
+      },
+      "Vishnu Irigireddy_48_Renton": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+      ],
+      "Tim Nguyen_63_Renton": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+      ],
+      "Oleksander Martynenko_36_Bellevue": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+      ],
+      "fatality_injuries_head_and_legs": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ]
+    },
+    "route_and_location": {
+      "Early_Winter_Couloir_AI3_M4+": [
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "Early_Winters_Spires_area": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
+      ]
+    },
+    "response_and_rescue": {
+      "self_rescue_hike_out_drive_west_payphone_Newhalem": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "distance_to_call_miles": {
+        "approximately_40": [
+          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
+        ],
+        "approximately_60": [
+          "https://www.climbing.com/news/climbing-fatality-washington/"
+        ]
+      },
+      "helicopter_recovery": [
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "agencies": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ]
+    }
+  },
+  "conflict_resolution_notes": [
+    {
+      "field": "accident_date",
+      "chosen_value": "2025-05-10",
+      "rationale": "Multiple 2025 sources (specialized climbing news and AP report) indicate May 10, 2025; NBC record listed 2023-10-03 which conflicts with all other details and is likely an extraction error. Higher overall source consensus favored over single higher extraction-confidence date."
+    },
+    {
+      "field": "fall_height",
+      "chosen_value": "approximately 400 feet (122 m) total, consisting of ~200 ft vertical fall plus ~200 ft slide",
+      "rationale": "All detailed sources describe a 200 ft drop followed by a ~200 ft slide; AP summarizes as ~400 ft. NBC’s 200 ft figure represents the initial vertical drop only. Combined representation resolves discrepancy."
+    },
+    {
+      "field": "activity_type",
+      "chosen_value": "alpine climbing",
+      "rationale": "Route and conditions are alpine mixed (AI3 M4+); synonyms 'rock climbing'/'climbing' retained as aliases."
+    }
+  ],
+  "sources": [
+    {
+      "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "publisher": "NBC News",
+      "extracted_at": "2025-10-01T10:28:27-07:00",
+      "extraction_confidence_score": 0.64,
+      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_172734/accident_info.json",
+      "reported_key_points": [
+        "Apparent anchor failure; initial ~200 ft fall + ~200 ft slide",
+        "Names, ages, and hometowns of all four climbers",
+        "Survivor had internal injuries and head trauma but no broken bones",
+        "Survivor hiked out in darkness, drove west, hit guardrail, and kept driving",
+        "Weathered piton found attached to the line",
+        "Retreat decision around 5:30 p.m.; late to be on mountain"
+      ]
+    },
+    {
+      "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "publisher": "NBC News",
+      "extracted_at": "2025-10-01T14:36:29-07:00",
+      "extraction_confidence_score": 0.55,
+      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_213244/accident_info.json",
+      "reported_key_points": [
+        "Region and mountain name details",
+        "Counts (4 involved, 3 fatalities, 1 injured)",
+        "Response agencies (Okanogan County Sheriff's Office, UW Medicine)",
+        "Self-rescue details in darkness"
+      ]
+    },
+    {
+      "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "publisher": "NBC News",
+      "extracted_at": "2025-10-01T16:22:34-07:00",
+      "extraction_confidence_score": 0.55,
+      "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_162125/accident_info.json",
+      "reported_key_points": [
+        "Pre-extracted route/equipment/fall metrics corroborating other sources"
+      ]
+    },
+    {
+      "source_url": "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+      "publisher": "The Columbian (AP)",
+      "source_name": "The Associated Press",
+      "extracted_at": "2025-10-01T16:46:48-07:00",
+      "extraction_confidence_score": 0.55,
+      "__file_path": "/workspaces/structuring-test/artifacts/columbian_com/20251001_164427/accident_info.json",
+      "reported_key_points": [
+        "Approximate 400 ft fall",
+        "Survivor called 911 from a payphone about 40 miles away",
+        "Detailed survivor injury symptoms (head bruises, fluid from ears; difficulty breathing)",
+        "Light snowfall conditions",
+        "Pitons and backup anchor practice context",
+        "GPS device carried by group used for coordinates by SAR"
+      ]
+    },
+    {
+      "source_url": "https://www.climbing.com/news/climbing-fatality-washington/",
+      "publisher": "Climbing",
+      "extracted_at": "2025-10-01T14:31:18-07:00",
+      "extraction_confidence_score": 0.34,
+      "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_212657/accident_info.json",
+      "reported_key_points": [
+        "Accident date: Saturday, May 10",
+        "Route: Early Winter Couloir (AI3 M4+); ~1,100 ft line",
+        "200 ft near-vertical fall + ~200 ft tumble (~400 ft total)",
+        "Bodies recovered by Snohomish County Helicopter Rescue Team",
+        "Deceased injuries: severe head trauma and multiple leg fractures",
+        "Rope attached to a single weathered piton; backup status unknown",
+        "All four attached to same rope"
+      ]
+    },
+    {
+      "source_url": "https://www.climbing.com/news/climbing-fatality-washington/",
+      "publisher": "Climbing",
+      "extracted_at": "2025-10-01T16:22:34-07:00",
+      "extraction_confidence_score": 0.34,
+      "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_162126/accident_info.json",
+      "reported_key_points": [
+        "Pre-extracted equipment (piton, anchor, rope) and fall metrics corroborating narrative"
+      ]
+    }
+  ]
+}
