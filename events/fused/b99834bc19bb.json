@@ -1,19 +1,179 @@
 {
   "event_id": "b99834bc19bb",
-  "extracted_at": "2025-10-01T16:22:34-07:00",
-  "pre_extracted": {
-    "lead_sentences": [
-      "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
-      "Callers to 911 about 4 p.m."
+  "title": "Ice climber fatality at The Junkyards near Canmore (Eugene/Yevhen/Zhenya Vahin, 33)",
+  "accident_date": "2025-01-23",
+  "location": {
+    "area_name": "The Junkyards",
+    "alternate_names": [
+      "Junkyards"
     ],
-    "route_types_pre": [
-      "wall"
-    ],
-    "fall_height_feet_pre": 300,
-    "fall_height_meters_pre": 91.4
+    "nearby": "Grassi Lakes",
+    "region": "Canmore, Bow Valley",
+    "state_province": "Alberta",
+    "country": "Canada"
   },
-  "scraped_full_text": "Man dies after 300-foot fall while climbing in Index Man dies after 300-foot fall while climbing in Index A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
-  "__file_path": "/artifacts/seattletimes_com/20251001_162126/accident_info.json",
-  "article_text": "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews. Callers to 911 about 4 p.m. Thursday reported seeing the man fall and hearing cries for help, Andrews said. Your browser is set to private mode. To continue reading, log in or subscribe. Already a subscriber? Log in now.",
-  "source_url": "https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/"
+  "activity_type": "ice climbing",
+  "accident_type": "fall",
+  "roped_status": "unroped",
+  "fall_distance_known": false,
+  "num_people_involved": 1,
+  "num_fatalities": 1,
+  "num_injured": 0,
+  "num_rescued": 0,
+  "people": [
+    {
+      "name": "Eugene Vahin",
+      "alternate_names": [
+        "Eugene (Yevhen) Vahin",
+        "Eugene (Zhenya) Vahin",
+        "Yevhen Vahin",
+        "Zhenya Vahin"
+      ],
+      "age": 33,
+      "outcome": "fatality"
+    }
+  ],
+  "rescue_teams_involved": [
+    "Kananaskis Mountain Rescue"
+  ],
+  "response_agencies": [
+    "RCMP"
+  ],
+  "rescue_method": "Ground recovery; body carried out by Kananaskis Mountain Rescue to RCMP",
+  "bodies_recovery_method": "ground carry-out",
+  "accident_summary_text": "On January 23, 2025, 33-year-old ice climber Eugene (Yevhen/Zhenya) Vahin suffered a fatal unroped fall at The Junkyards near Grassi Lakes in Canmore, Alberta. RCMP and Kananaskis Mountain Rescue responded to an overdue-climber report and recovered his body. Officials said the exact circumstances and fall distance were unclear.",
+  "timeline_text": "Jan 23: After a missed check-in and overdue report, RCMP requested assistance. Kananaskis Mountain Rescue deployed, located Vahin deceased at The Junkyards near Grassi Lakes, and recovered him to RCMP later that evening.",
+  "reported_circumstances": {
+    "summary": "Vahin was reported to be unroped and likely near the top of a route when he slipped; the fall was not captured on his camera. The precise fall distance remains unknown.",
+    "injury_details": "Medical examiners reportedly indicated severe head injury and internal bleeding."
+  },
+  "quoted_dialogue": [
+    "The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased.",
+    "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+  ],
+  "accident_causes": {
+    "rescue_and_outcome": {
+      "remains_recovered": true
+    },
+    "cause_classification": {
+      "primary_cause_category": "unknown",
+      "narrative_summary": "Climber was found deceased after an apparent unroped fall; exact circumstances and fall distance were not determined."
+    }
+  },
+  "sources": [
+    {
+      "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+      "extracted_at": "2025-10-02T14:47:36-07:00"
+    },
+    {
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "extracted_at": "2025-10-02T14:41:03-07:00"
+    },
+    {
+      "source_url": "https://cochranenow.com/articles/tragic-fall-claims-canmore-ice-climber-",
+      "extracted_at": "2025-10-02T14:41:03-07:00"
+    },
+    {
+      "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+      "extracted_at": "2025-10-02T14:41:03-07:00"
+    }
+  ],
+  "excluded_sources": [
+    {
+      "source_url": "https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/",
+      "reason": "Outlier/contradictory event details (Index Town Wall, Washington; different incident)."
+    }
+  ],
+  "provenance": [
+    {
+      "field_path": "people[0].name",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "later identified as Eugene (Yevhen) Vahin"
+    },
+    {
+      "field_path": "people[0].alternate_names",
+      "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+      "type": "article_text",
+      "verbatim": "Eugene (Zhenya) Vahin"
+    },
+    {
+      "field_path": "people[0].age",
+      "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+      "type": "article_text",
+      "verbatim": "A 33-year-old ice climber"
+    },
+    {
+      "field_path": "activity_type",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "A 33-year-old ice climber fell to his death"
+    },
+    {
+      "field_path": "location.area_name",
+      "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+      "type": "article_text",
+      "verbatim": "at the Junkyards near Canmore"
+    },
+    {
+      "field_path": "location.nearby",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "near Grassi Lakes"
+    },
+    {
+      "field_path": "response_agencies",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "RCMP and emergency crews along with Kananaskis Mountain Rescue responded"
+    },
+    {
+      "field_path": "rescue_teams_involved[0]",
+      "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+      "type": "article_text",
+      "verbatim": "Kananaskis Mountain Rescue"
+    },
+    {
+      "field_path": "rescue_method",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+    },
+    {
+      "field_path": "accident_date",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "On Jan. 23, RCMP and emergency crews..."
+    },
+    {
+      "field_path": "roped_status",
+      "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+      "type": "article_text",
+      "verbatim": "Eugene Vahin passed away on January 23, after an unroped fall at The Junkyards"
+    },
+    {
+      "field_path": "fall_distance_known",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "There are no details on what happened or how far Vahin fell."
+    },
+    {
+      "field_path": "reported_circumstances.injury_details",
+      "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+      "type": "article_text",
+      "verbatim": "The medical examiners told her Vahin likely died from a combination of severe head injury and internal bleeding."
+    },
+    {
+      "field_path": "quoted_dialogue[0]",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased,"
+    },
+    {
+      "field_path": "quoted_dialogue[1]",
+      "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+      "type": "article_text",
+      "verbatim": "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+    }
+  ]
 }

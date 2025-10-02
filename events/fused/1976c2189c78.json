@@ -3,23 +3,72 @@
   "source_urls": [
     "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462"
   ],
-  "first_extracted_at": "2025-10-01T08:46:13-07:00",
-  "last_extracted_at": "2025-10-01T12:26:57-07:00",
-  "article_date_published": "2023-06-02",
+  "sources": [
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T11:57:52-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T12:26:57-07:00",
+      "__file_path": "/artifacts/test_run_fix/accident_info.json",
+      "extraction_confidence_score": 0.46
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T11:00:39-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T10:30:54-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T08:47:07-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T08:46:13-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T09:38:19-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+      "extraction_confidence_score": 0.52
+    },
+    {
+      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+      "extracted_at": "2025-10-01T08:50:56-07:00",
+      "__file_path": "/artifacts/abcnews_go_com/20251001_155010/accident_info.json",
+      "extraction_confidence_score": 0.52
+    }
+  ],
   "article_title": "Climber falls over 3,000 feet to his death off tallest mountain in North America He fell over half a mile and his body was recovered two days later.",
+  "article_date_published": "2023-06-02",
   "region": "North America",
   "mountain_name": "Mount McKinley",
   "route_name": "West Buttress",
-  "location_descriptors": [
-    "Peters Glacier",
-    "Squirrel Point"
+  "activity_type": "climbing",
+  "activity_type_alternatives": [
+    "climbing",
+    "ski mountaineering"
   ],
-  "activity_type": "ski mountaineering",
-  "notable_equipment_details": "Un-roped at time of fall",
   "accident_type": "fall",
   "accident_date": "2023-06-02",
+  "location_notes": "Squirrel Point toward the Peters Glacier on Mount McKinley (Denali) West Buttress route.",
+  "accident_summary_text": "Climber fell over 3,000 feet to his death off Mount McKinley.",
+  "timeline_text": "On Monday, June 2, the other two members of Chiu’s expedition reported the fall.",
   "fall_height_meters_estimate": 914.4,
-  "fall_height_feet_estimate": 3000,
   "num_people_involved": 3,
   "num_fatalities": 1,
   "num_injured": 0,
@@ -29,80 +78,54 @@
       "name": "Alex Chiu",
       "age": 41,
       "outcome": "deceased",
-      "home_location": "Seattle, Washington"
+      "hometown": "Seattle, Washington"
     }
   ],
   "response_agencies": [
     "National Park Service"
   ],
   "rescue_method": "body recovery",
-  "response_difficulties": [
-    "Unable to see or hear victim after the fall",
-    "High winds and snow delayed access until early Wednesday"
-  ],
   "bodies_recovery_method": "recovered two days later",
-  "accident_summary_text": "Alex Chiu, a 41-year-old ski mountaineer from Seattle, fell over 3,000 feet from a location known as Squirrel Point toward the Peters Glacier while on Mount McKinley’s West Buttress route. He was un-roped at the time. His body was recovered two days later.",
-  "timeline_text": "Monday, June 2: Chiu fell at Squirrel Point toward the Peters Glacier while un-roped. His two teammates lowered over the edge as far as possible but could not see or hear him, then descended the West Buttress route to seek additional help and proceeded to Camp 1. Due to high winds and snow, access to the site was delayed until early Wednesday. Two days after the fall: His body was recovered.",
+  "response_difficulties": "unable to see or hear Chiu after the fall",
   "quoted_dialogue": [
     "On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell at a location known as Squirrel Point towards the Peters Glacier, an exposed rocky and serac covered 3000-foot face.",
     "After witnessing the fall, the reporting party lowered over the edge as far as possible but was unable to see or hear Chiu. They then descended the West Buttress route for additional help before proceeding to Camp 1."
   ],
+  "notable_equipment_details": "Un-roped at time of fall",
   "self_rescue_boolean": false,
   "anchor_failure_boolean": false,
-  "sources": [
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T11:57:52-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+  "field_provenance": {
+    "article_title": {
+      "chosen_from": [
+        "/artifacts/test_run_fix/accident_info.json"
+      ]
     },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T12:26:57-07:00",
-      "extraction_confidence_score": 0.46,
-      "__file_path": "/artifacts/test_run_fix/accident_info.json"
+    "article_date_published": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+      ]
     },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T11:00:39-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+    "region": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+      ]
     },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T10:30:54-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_172950/accident_info.json"
+    "mountain_name": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
     },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T08:47:07-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+    "route_name": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
     },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T08:46:13-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_154600/accident_info.json"
-    },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T09:38:19-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
-    },
-    {
-      "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-      "extracted_at": "2025-10-01T08:50:56-07:00",
-      "extraction_confidence_score": 0.52,
-      "__file_path": "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
-    }
-  ],
-  "conflicts": {
     "activity_type": {
-      "chosen": "ski mountaineering",
-      "alternates": [
+      "chosen_value": "climbing",
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ],
+      "candidates": [
         {
           "value": "climbing",
           "sources": [
@@ -113,13 +136,157 @@
             "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
             "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
             "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+          ],
+          "max_source_confidence": 0.52
+        },
+        {
+          "value": "ski mountaineering",
+          "sources": [
+            "/artifacts/test_run_fix/accident_info.json"
+          ],
+          "max_source_confidence": 0.46
+        }
+      ]
+    },
+    "accident_type": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
+    },
+    "accident_date": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+      ]
+    },
+    "location_notes": {
+      "derived_from_text": true,
+      "sources": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+        "/artifacts/test_run_fix/accident_info.json"
+      ]
+    },
+    "accident_summary_text": {
+      "chosen_value": "Climber fell over 3,000 feet to his death off Mount McKinley.",
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ],
+      "candidates": [
+        {
+          "value": "Climber falls over 3,000 feet to his death off tallest mountain in North America.",
+          "sources": [
+            "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+          ]
+        },
+        {
+          "value": "Alex Chiu, a 41-year-old ski mountaineer from Seattle, fell over 3,000 feet from a location known as Squirrel Point toward the Peters Glacier while on Mount McKinley’s West Buttress route. He was un-roped at the time. His body was recovered two days later.",
+          "sources": [
+            "/artifacts/test_run_fix/accident_info.json"
           ]
         }
       ]
     },
+    "timeline_text": {
+      "chosen_value": "On Monday, June 2, the other two members of Chiu’s expedition reported the fall.",
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ],
+      "candidates": [
+        {
+          "value": "On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell.",
+          "sources": [
+            "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+          ]
+        },
+        {
+          "value": "Monday, June 2: Chiu fell at Squirrel Point toward the Peters Glacier while un-roped. His two teammates lowered over the edge as far as possible but could not see or hear him, then descended the West Buttress route to seek additional help and proceeded to Camp 1. Two days later: His body was recovered.",
+          "sources": [
+            "/artifacts/test_run_fix/accident_info.json"
+          ]
+        }
+      ]
+    },
+    "fall_height_meters_estimate": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      ]
+    },
+    "num_people_involved": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
+    },
+    "num_fatalities": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
+    },
+    "num_injured": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
+    },
+    "num_rescued": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      ]
+    },
+    "people[0].outcome": {
+      "chosen_value": "deceased",
+      "candidates": [
+        {
+          "value": "deceased",
+          "sources": [
+            "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+          ]
+        },
+        {
+          "value": "fatality",
+          "sources": [
+            "/artifacts/test_run_fix/accident_info.json"
+          ]
+        }
+      ]
+    },
+    "response_agencies": {
+      "union_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+        "/artifacts/test_run_fix/accident_info.json",
+        "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+        "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+        "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+        "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
+      ]
+    },
     "rescue_method": {
-      "chosen": "body recovery",
-      "alternates": [
+      "chosen_value": "body recovery",
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      ],
+      "candidates": [
+        {
+          "value": "body recovery",
+          "sources": [
+            "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+            "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
+          ]
+        },
         {
           "value": "descent for help",
           "sources": [
@@ -129,15 +296,35 @@
         }
       ]
     },
-    "people[0].outcome": {
-      "chosen": "deceased",
-      "alternates": [
-        {
-          "value": "fatality",
-          "sources": [
-            "/artifacts/test_run_fix/accident_info.json"
-          ]
-        }
+    "bodies_recovery_method": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      ]
+    },
+    "response_difficulties": {
+      "chosen_value": "unable to see or hear Chiu after the fall",
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      ]
+    },
+    "quoted_dialogue": {
+      "union_from": [
+        "/artifacts/test_run_fix/accident_info.json"
+      ]
+    },
+    "notable_equipment_details": {
+      "chosen_from": [
+        "/artifacts/test_run_fix/accident_info.json"
+      ]
+    },
+    "self_rescue_boolean": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+      ]
+    },
+    "anchor_failure_boolean": {
+      "chosen_from": [
+        "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
       ]
     }
   }

@@ -14,6 +14,7 @@ from accident_schema import _SCHEMA_TEXT, _PROMPT
 from accident_preextract import pre_extract_fields
 from config import ACCIDENT_INFO_MODEL, SERVICE_TIER
 from openai_call_manager import can_make_call, record_call
+from token_tracker import add_usage
 
 logger = logging.getLogger(__name__)
 try:
@@ -70,6 +71,10 @@ def _chat_create(messages: list, model: str):
             ct = int(getattr(usage, 'completion_tokens', 0) or 0)
             tt = pt + ct
             print(f"[tokens] model={model} tier={SERVICE_TIER} prompt={pt} completion={ct} total={tt}")
+            try:
+                add_usage(pt, ct)
+            except Exception:
+                pass
     except Exception:
         pass
     return resp

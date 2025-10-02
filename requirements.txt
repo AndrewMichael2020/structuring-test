@@ -40,3 +40,7 @@ google-auth-oauthlib
 # USeful git commands here:
 # git status --porcelain -b
 # git push origin HEAD:main --force
+
+# Run the full batch pipeline from urls.txt:
+# python main.py --urls-file urls.txt --batch-size 4 --assign-event-ids --merge-events --generate-reports
+

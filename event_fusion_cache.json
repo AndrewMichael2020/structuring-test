@@ -4,23 +4,72 @@
     "source_urls": [
       "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462"
     ],
-    "first_extracted_at": "2025-10-01T08:46:13-07:00",
-    "last_extracted_at": "2025-10-01T12:26:57-07:00",
-    "article_date_published": "2023-06-02",
+    "sources": [
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T11:57:52-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T12:26:57-07:00",
+        "__file_path": "/artifacts/test_run_fix/accident_info.json",
+        "extraction_confidence_score": 0.46
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T11:00:39-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T10:30:54-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T08:47:07-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T08:46:13-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T09:38:19-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+        "extraction_confidence_score": 0.52
+      },
+      {
+        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
+        "extracted_at": "2025-10-01T08:50:56-07:00",
+        "__file_path": "/artifacts/abcnews_go_com/20251001_155010/accident_info.json",
+        "extraction_confidence_score": 0.52
+      }
+    ],
     "article_title": "Climber falls over 3,000 feet to his death off tallest mountain in North America He fell over half a mile and his body was recovered two days later.",
+    "article_date_published": "2023-06-02",
     "region": "North America",
     "mountain_name": "Mount McKinley",
     "route_name": "West Buttress",
-    "location_descriptors": [
-      "Peters Glacier",
-      "Squirrel Point"
+    "activity_type": "climbing",
+    "activity_type_alternatives": [
+      "climbing",
+      "ski mountaineering"
     ],
-    "activity_type": "ski mountaineering",
-    "notable_equipment_details": "Un-roped at time of fall",
     "accident_type": "fall",
     "accident_date": "2023-06-02",
+    "location_notes": "Squirrel Point toward the Peters Glacier on Mount McKinley (Denali) West Buttress route.",
+    "accident_summary_text": "Climber fell over 3,000 feet to his death off Mount McKinley.",
+    "timeline_text": "On Monday, June 2, the other two members of Chiu’s expedition reported the fall.",
     "fall_height_meters_estimate": 914.4,
-    "fall_height_feet_estimate": 3000,
     "num_people_involved": 3,
     "num_fatalities": 1,
     "num_injured": 0,
@@ -30,115 +79,253 @@
         "name": "Alex Chiu",
         "age": 41,
         "outcome": "deceased",
-        "home_location": "Seattle, Washington"
+        "hometown": "Seattle, Washington"
       }
     ],
     "response_agencies": [
       "National Park Service"
     ],
     "rescue_method": "body recovery",
-    "response_difficulties": [
-      "Unable to see or hear victim after the fall",
-      "High winds and snow delayed access until early Wednesday"
-    ],
     "bodies_recovery_method": "recovered two days later",
-    "accident_summary_text": "Alex Chiu, a 41-year-old ski mountaineer from Seattle, fell over 3,000 feet from a location known as Squirrel Point toward the Peters Glacier while on Mount McKinley’s West Buttress route. He was un-roped at the time. His body was recovered two days later.",
-    "timeline_text": "Monday, June 2: Chiu fell at Squirrel Point toward the Peters Glacier while un-roped. His two teammates lowered over the edge as far as possible but could not see or hear him, then descended the West Buttress route to seek additional help and proceeded to Camp 1. Due to high winds and snow, access to the site was delayed until early Wednesday. Two days after the fall: His body was recovered.",
+    "response_difficulties": "unable to see or hear Chiu after the fall",
     "quoted_dialogue": [
       "On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell at a location known as Squirrel Point towards the Peters Glacier, an exposed rocky and serac covered 3000-foot face.",
       "After witnessing the fall, the reporting party lowered over the edge as far as possible but was unable to see or hear Chiu. They then descended the West Buttress route for additional help before proceeding to Camp 1."
     ],
+    "notable_equipment_details": "Un-roped at time of fall",
     "self_rescue_boolean": false,
     "anchor_failure_boolean": false,
-    "sources": [
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T11:57:52-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+    "field_provenance": {
+      "article_title": {
+        "chosen_from": [
+          "/artifacts/test_run_fix/accident_info.json"
+        ]
       },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T12:26:57-07:00",
-        "extraction_confidence_score": 0.46,
-        "__file_path": "/workspaces/structuring-test/artifacts/test_run_fix/accident_info.json"
+      "article_date_published": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+        ]
       },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T11:00:39-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+      "region": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+        ]
       },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T10:30:54-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_172950/accident_info.json"
+      "mountain_name": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
       },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T08:47:07-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+      "route_name": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
       },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T08:46:13-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154600/accident_info.json"
-      },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T09:38:19-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
-      },
-      {
-        "source_url": "https://abcnews.go.com/US/climber-falls-3000-feet-death-off-tallest-mountain/story?id=122522462",
-        "extracted_at": "2025-10-01T08:50:56-07:00",
-        "extraction_confidence_score": 0.52,
-        "__file_path": "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
-      }
-    ],
-    "conflicts": {
       "activity_type": {
-        "chosen": "ski mountaineering",
-        "alternates": [
+        "chosen_value": "climbing",
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ],
+        "candidates": [
           {
             "value": "climbing",
             "sources": [
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+              "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            ],
+            "max_source_confidence": 0.52
+          },
+          {
+            "value": "ski mountaineering",
+            "sources": [
+              "/artifacts/test_run_fix/accident_info.json"
+            ],
+            "max_source_confidence": 0.46
+          }
+        ]
+      },
+      "accident_type": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
+      },
+      "accident_date": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_154700/accident_info.json"
+        ]
+      },
+      "location_notes": {
+        "derived_from_text": true,
+        "sources": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+          "/artifacts/test_run_fix/accident_info.json"
+        ]
+      },
+      "accident_summary_text": {
+        "chosen_value": "Climber fell over 3,000 feet to his death off Mount McKinley.",
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ],
+        "candidates": [
+          {
+            "value": "Climber falls over 3,000 feet to his death off tallest mountain in North America.",
+            "sources": [
+              "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            ]
+          },
+          {
+            "value": "Alex Chiu, a 41-year-old ski mountaineer from Seattle, fell over 3,000 feet from a location known as Squirrel Point toward the Peters Glacier while on Mount McKinley’s West Buttress route. He was un-roped at the time. His body was recovered two days later.",
+            "sources": [
+              "/artifacts/test_run_fix/accident_info.json"
             ]
           }
         ]
       },
-      "rescue_method": {
-        "chosen": "body recovery",
-        "alternates": [
+      "timeline_text": {
+        "chosen_value": "On Monday, June 2, the other two members of Chiu’s expedition reported the fall.",
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ],
+        "candidates": [
           {
-            "value": "descent for help",
+            "value": "On Monday, June 2, the other two members of Chiu’s expedition reported that the un-roped ski mountaineer fell.",
             "sources": [
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
-              "/workspaces/structuring-test/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+              "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            ]
+          },
+          {
+            "value": "Monday, June 2: Chiu fell at Squirrel Point toward the Peters Glacier while un-roped. His two teammates lowered over the edge as far as possible but could not see or hear him, then descended the West Buttress route to seek additional help and proceeded to Camp 1. Two days later: His body was recovered.",
+            "sources": [
+              "/artifacts/test_run_fix/accident_info.json"
             ]
           }
+        ]
+      },
+      "fall_height_meters_estimate": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+        ]
+      },
+      "num_people_involved": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
+      },
+      "num_fatalities": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
+      },
+      "num_injured": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
+        ]
+      },
+      "num_rescued": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json"
         ]
       },
       "people[0].outcome": {
-        "chosen": "deceased",
-        "alternates": [
+        "chosen_value": "deceased",
+        "candidates": [
+          {
+            "value": "deceased",
+            "sources": [
+              "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_163735/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            ]
+          },
           {
             "value": "fatality",
             "sources": [
-              "/workspaces/structuring-test/artifacts/test_run_fix/accident_info.json"
+              "/artifacts/test_run_fix/accident_info.json"
             ]
           }
+        ]
+      },
+      "response_agencies": {
+        "union_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+          "/artifacts/test_run_fix/accident_info.json",
+          "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+          "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+          "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+          "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
+        ]
+      },
+      "rescue_method": {
+        "chosen_value": "body recovery",
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+        ],
+        "candidates": [
+          {
+            "value": "body recovery",
+            "sources": [
+              "/artifacts/abcnews_go_com/20251001_185606/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_175930/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_172950/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_154600/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_163735/accident_info.json"
+            ]
+          },
+          {
+            "value": "descent for help",
+            "sources": [
+              "/artifacts/abcnews_go_com/20251001_154700/accident_info.json",
+              "/artifacts/abcnews_go_com/20251001_155010/accident_info.json"
+            ]
+          }
+        ]
+      },
+      "bodies_recovery_method": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+        ]
+      },
+      "response_difficulties": {
+        "chosen_value": "unable to see or hear Chiu after the fall",
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+        ]
+      },
+      "quoted_dialogue": {
+        "union_from": [
+          "/artifacts/test_run_fix/accident_info.json"
+        ]
+      },
+      "notable_equipment_details": {
+        "chosen_from": [
+          "/artifacts/test_run_fix/accident_info.json"
+        ]
+      },
+      "self_rescue_boolean": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
+        ]
+      },
+      "anchor_failure_boolean": {
+        "chosen_from": [
+          "/artifacts/abcnews_go_com/20251001_185606/accident_info.json"
         ]
       }
     }
@@ -146,382 +333,436 @@
   "5406c619096c19996cda3f4a42221d57": {
     "event_id": "749f8e98f4a5",
     "canonical_record": {
-      "summary": "Four climbers on the Early Winter Couloir between the North and South Early Winters Spires in Washington Pass fell during a descent after an apparent anchor failure involving a weathered piton. Three climbers died; the survivor, 38-year-old Anton Tselykh of Seattle, sustained internal injuries and head trauma, hiked out in darkness, drove west, and called 911 from a payphone in Newhalem. Bodies were later recovered by helicopter.",
       "accident_date": "2025-05-10",
-      "accident_time_approx": "Saturday evening; retreat decision around 5:30 p.m.",
-      "location": {
-        "state": "Washington",
-        "region": "Washington Pass, Liberty Bell Group, North Cascades",
-        "mountain_name": "Early Winters Spires",
-        "route_name": "Early Winter Couloir (AI3 M4+)",
-        "location_aliases": [
-          "North Early Winters Spire",
-          "Early Winters Spires",
-          "Washington Pass"
-        ]
-      },
+      "accident_time_approx": "Saturday evening; retreat decision around 5:30 p.m.; survivor reported waking around 10 p.m.",
+      "region": "Washington, Cascades",
+      "subregion": "Washington Pass, Liberty Bell Group",
+      "mountain_name": "Early Winters Spires",
+      "area_detail": "Between North and South Early Winters Spires; North Early Winters Spire area",
+      "route_name": "Early Winter Couloir (AI3 M4+)",
       "activity_type": "alpine climbing",
-      "activity_type_aliases": [
-        "rock climbing",
-        "climbing"
-      ],
-      "accident_type": "fall during descent due to anchor failure",
-      "anchor_failure_boolean": true,
-      "self_rescue_boolean": true,
+      "accident_type": "fall during descent due to anchor failure (rappelling)",
+      "summary": "A four-person team retreated from Early Winter Couloir as a storm moved in. During descent/rappel, a weathered piton anchor reportedly failed, sending all four down roughly 200 ft and then another ~200 ft down a couloir/chute. Three climbers died; the survivor, Anton Tselykh, suffered internal injuries and head trauma, self-evacuated in darkness to his car, drove west to Newhalem, and called 911 from a payphone. Recovery of the deceased was conducted by helicopter.",
       "counts": {
         "num_people_involved": 4,
         "num_fatalities": 3,
         "num_injured": 1
       },
-      "fall_details": {
-        "vertical_drop_feet_estimate": 200,
-        "additional_slide_feet_estimate": 200,
-        "total_fall_feet_estimate": 400,
-        "vertical_drop_meters_estimate": 61.0,
-        "total_fall_meters_estimate": 122.0
-      },
-      "environmental_conditions": {
-        "weather": "light snow; storm system moving in",
-        "visibility": "poor",
-        "time_of_day": "evening",
-        "notes": [
-          "Late in the day to be on the mountain per undersheriff"
-        ]
-      },
-      "cause_analysis": {
-        "primary_cause_category": "technical_system_failure",
-        "proximate_causes": [
-          "anchor_failure"
-        ],
-        "anchor_system": {
-          "anchor_type": "piton",
-          "anchor_condition": "weathered/old-looking",
-          "failure_mode": "piton ripped from rock",
-          "backup_anchor_status": "unknown"
-        },
-        "contributing_factors": [
-          "approaching storm",
-          "late hour",
-          "all four attached to the same rope",
-          "use of weathered fixed protection"
-        ],
-        "status": "investigation in progress",
-        "narrative_summary": "A weathered piton used as the main rappel anchor ripped from the rock during descent, precipitating a roughly 400-foot combined fall and slide of all four climbers; three died from trauma and one survived with serious injuries."
-      },
-      "participants": [
+      "people": [
         {
           "name": "Anton Tselykh",
           "age": 38,
-          "residence_city": "Seattle",
           "outcome": "survived",
           "injuries": [
-            "internal injuries/internal bleeding",
-            "head trauma/traumatic brain injury",
-            "bruises on head",
-            "fluid leaking from ears",
+            "internal injuries",
+            "head trauma / traumatic brain injury",
+            "no broken bones noted",
             "facial injuries",
             "hand injuries",
             "rib injuries",
+            "bruises on head",
+            "fluid leaking from ears",
             "difficulty breathing"
           ],
-          "notes": [
-            "No broken bones reported",
-            "Initially refused medical attention; later hospitalized",
-            "Reported disorientation after head trauma"
-          ]
+          "notes": "Self-evacuated on foot in darkness; later hospitalized at Harborview Medical Center; initially declined immediate medical attention."
         },
         {
           "name": "Vishnu Irigireddy",
           "age": 48,
-          "residence_city": "Renton",
           "outcome": "fatality",
           "injuries": [
-            "severe head (cranial) trauma",
+            "severe head/cranial trauma",
             "multiple leg fractures"
           ]
         },
         {
           "name": "Tim Nguyen",
           "age": 63,
-          "residence_city": "Renton",
           "outcome": "fatality",
           "injuries": [
-            "severe head (cranial) trauma",
+            "severe head/cranial trauma",
             "multiple leg fractures"
           ]
         },
         {
           "name": "Oleksander Martynenko",
           "age": 36,
-          "residence_city": "Bellevue",
           "outcome": "fatality",
           "injuries": [
-            "severe head (cranial) trauma",
+            "severe head/cranial trauma",
             "multiple leg fractures"
           ]
         }
       ],
-      "equipment_and_systems": {
-        "critical_gear_present": [
-          "climbing harnesses",
-          "ropes",
-          "removable protection",
-          "piton (fixed)"
+      "fall": {
+        "total_height_meters_estimate": 122.0,
+        "components_meters": [
+          61.0,
+          61.0
         ],
-        "gps_communication_device_present": true,
-        "gps_communication_device_used": false,
+        "description": "Approx. 200 ft near-vertical fall followed by ~200 ft tumble/slide down a rocky, partially snow-covered chute.",
+        "provenance": [
+          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+          "https://www.climbing.com/news/climbing-fatality-washington/",
+          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+        ]
+      },
+      "booleans": {
+        "self_rescue": true,
+        "anchor_failure": true
+      },
+      "technical": {
+        "anchor_system": {
+          "anchor_type": "piton (fixed)",
+          "anchor_condition": "weathered/old-looking",
+          "failure_mode": "piton ripped from rock (reported)",
+          "backup_anchor_present": "unknown"
+        },
         "rope_system": {
+          "roped_for_descent": true,
           "num_people_on_rope": 4,
-          "roped_for_descent": true
+          "all_attached_to_same_rope": true
+        },
+        "equipment": {
+          "critical_gear_present": [
+            "climbing harnesses",
+            "ropes",
+            "removable protection",
+            "GPS communication device"
+          ],
+          "equipment_use_notes": [
+            "GPS device carried but not used by survivor to summon help initially; later used by responders for coordinates."
+          ]
         }
       },
-      "response_and_rescue": {
-        "survivor_self_evacuated": true,
+      "conditions_and_context": {
+        "weather": {
+          "precipitation": "light snow",
+          "weather_change": "storm moving in during afternoon/evening"
+        },
+        "visibility": "poor/darkness after fall",
+        "timing_notes": [
+          "Late in the day (retreat around 5:30 p.m.)"
+        ]
+      },
+      "response": {
         "survivor_actions": [
-          "extricated from ropes",
-          "hiked out over rock and snow using an ice tool",
+          "extricated self from ropes/equipment debris",
+          "hiked over rock and snow using an ice tool",
           "reached car in darkness",
-          "drove west over the mountain range",
-          "collided with a guardrail en route",
-          "called 911 from a payphone in Newhalem, WA"
+          "drove west over Cascade range (collided with guardrail en route)",
+          "called 911 from a payphone in Newhalem (~40–60 miles from trailhead)"
         ],
-        "call_distance_miles_estimate_range": [
-          40,
-          60
-        ],
+        "emergency_call_details": {
+          "call_location": "Newhalem, WA",
+          "call_medium": "payphone",
+          "selected_quotes": [
+            "The whole team went down.",
+            "My face is very well beaten, hands and my ribs, I can hardly breathe."
+          ]
+        },
         "agencies": [
           "Okanogan County Sheriff's Office",
-          "Snohomish County Helicopter Rescue Team",
           "UW Medicine",
           "Harborview Medical Center"
         ],
-        "bodies_recovery_method": "helicopter extraction",
-        "response_difficulties": [
-          "darkness",
-          "disorientation after head trauma",
-          "delayed emergency notification due to survivor driving away from nearest services"
+        "rescue_teams": [
+          "Snohomish County Helicopter Rescue Team"
         ],
-        "medical_status_updates": [
-          "Survivor in satisfactory condition by Wednesday at Harborview Medical Center"
+        "bodies_recovery_method": "helicopter extraction",
+        "difficulties": [
+          "darkness",
+          "disorientation due to head trauma",
+          "late hour",
+          "storm/light snow"
         ]
       },
-      "timeline": [
-        "Saturday afternoon: Climbing Early Winter Couloir; lightly snowing",
-        "Around 5:30 p.m.: Team decides to retreat as weather moves in",
-        "During descent: Anchor (weathered piton) fails; all four fall ~200 ft and slide ~200 ft",
-        "Night: Survivor loses consciousness, later wakes around 10 p.m., self-evacuates in darkness",
-        "Overnight to early Sunday: Survivor drives west, collides with guardrail, continues to Newhalem and calls 911",
-        "Subsequent days: Bodies recovered by helicopter; survivor hospitalized and reported satisfactory by Wednesday"
-      ],
-      "other_notes": [
-        "A fifth member could not join the trip and later reported the group overdue",
-        "Officials believe the survivor may have been closest to the ground when the anchor failed, possibly reducing his fall distance"
-      ]
+      "accident_causes": {
+        "primary_cause_category": "technical_system_failure",
+        "secondary_cause_categories": [
+          "environmental"
+        ],
+        "proximate_causes": [
+          "anchor_failure"
+        ],
+        "contributing_factors": [
+          "weather change/storm arrival",
+          "weathered fixed piton",
+          "late in day",
+          "all four attached to one rope"
+        ],
+        "investigation_notes": {
+          "investigation_in_progress": true,
+          "anchor_recovered_observation": "Rope found attached to a single, weathered piton.",
+          "uncertainties": [
+            "Whether a backup anchor was in place",
+            "Exact failure mechanics of the piton"
+          ]
+        },
+        "narrative_summary": "During retreat in deteriorating weather, the party’s descent anchor involving a weathered fixed piton failed, precipitating a multi-hundred-foot fall and slide that led to three fatalities and one injured survivor."
+      }
     },
     "provenance": {
       "accident_date": [
-        {
-          "value": "2025-05-10",
-          "sources": [
-            "https://www.climbing.com/news/climbing-fatality-washington/"
-          ]
-        },
-        {
-          "value": "Saturday evening (no date specified)",
-          "sources": [
-            "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
-          ]
-        },
-        {
-          "value": "2023-10-03",
-          "sources": [
-            "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-          ],
-          "note": "Likely erroneous date; overridden by multiple 2025 sources"
-        }
+        "https://www.climbing.com/news/climbing-fatality-washington/",
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
       ],
-      "fall_details": {
-        "vertical_200ft_plus_200ft_slide": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ],
-        "total_approximately_400ft": [
-          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ]
-      },
-      "anchor_failure": [
-        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+      "mountain_and_route": [
         "https://www.climbing.com/news/climbing-fatality-washington/"
       ],
-      "anchor_condition_weathered_piton": [
-        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-        "https://www.climbing.com/news/climbing-fatality-washington/"
+      "people_and_ages": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
       ],
-      "weather_light_snow_and_storm": [
+      "injury_details": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
         "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
         "https://www.climbing.com/news/climbing-fatality-washington/"
       ],
-      "participants": {
-        "Anton Tselykh": {
-          "age_38": [
-            "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-            "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
-          ],
-          "residence_seattle": [
-            "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-          ],
-          "injuries_internal_head_trauma_no_broken_bones": [
-            "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-          ],
-          "injuries_internal_bleeding_tbi_and_symptoms": [
-            "https://www.climbing.com/news/climbing-fatality-washington/",
-            "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
-          ]
-        },
-        "Vishnu Irigireddy_48_Renton": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-        ],
-        "Tim Nguyen_63_Renton": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-        ],
-        "Oleksander Martynenko_36_Bellevue": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
-        ],
-        "fatality_injuries_head_and_legs": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ]
-      },
-      "route_and_location": {
-        "Early_Winter_Couloir_AI3_M4+": [
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ],
-        "Early_Winters_Spires_area": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
-        ]
-      },
-      "response_and_rescue": {
-        "self_rescue_hike_out_drive_west_payphone_Newhalem": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-          "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ],
-        "distance_to_call_miles": {
-          "approximately_40": [
-            "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/"
-          ],
-          "approximately_60": [
-            "https://www.climbing.com/news/climbing-fatality-washington/"
-          ]
-        },
-        "helicopter_recovery": [
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ],
-        "agencies": [
-          "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-          "https://www.climbing.com/news/climbing-fatality-washington/"
-        ]
-      }
+      "fall_height": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "anchor_details": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ],
+      "response_and_recovery": [
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+        "https://www.climbing.com/news/climbing-fatality-washington/",
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908"
+      ],
+      "timeline_and_decisions": [
+        "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
+        "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
+        "https://www.climbing.com/news/climbing-fatality-washington/"
+      ]
     },
-    "conflict_resolution_notes": [
-      {
-        "field": "accident_date",
-        "chosen_value": "2025-05-10",
-        "rationale": "Multiple 2025 sources (specialized climbing news and AP report) indicate May 10, 2025; NBC record listed 2023-10-03 which conflicts with all other details and is likely an extraction error. Higher overall source consensus favored over single higher extraction-confidence date."
-      },
-      {
-        "field": "fall_height",
-        "chosen_value": "approximately 400 feet (122 m) total, consisting of ~200 ft vertical fall plus ~200 ft slide",
-        "rationale": "All detailed sources describe a 200 ft drop followed by a ~200 ft slide; AP summarizes as ~400 ft. NBC’s 200 ft figure represents the initial vertical drop only. Combined representation resolves discrepancy."
-      },
-      {
-        "field": "activity_type",
-        "chosen_value": "alpine climbing",
-        "rationale": "Route and conditions are alpine mixed (AI3 M4+); synonyms 'rock climbing'/'climbing' retained as aliases."
-      }
-    ],
     "sources": [
       {
         "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-        "publisher": "NBC News",
+        "source_domain": "nbcnews.com",
         "extracted_at": "2025-10-01T10:28:27-07:00",
         "extraction_confidence_score": 0.64,
-        "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_172734/accident_info.json",
-        "reported_key_points": [
-          "Apparent anchor failure; initial ~200 ft fall + ~200 ft slide",
-          "Names, ages, and hometowns of all four climbers",
-          "Survivor had internal injuries and head trauma but no broken bones",
-          "Survivor hiked out in darkness, drove west, hit guardrail, and kept driving",
-          "Weathered piton found attached to the line",
-          "Retreat decision around 5:30 p.m.; late to be on mountain"
-        ]
+        "__file_path": "/artifacts/nbcnews_com/20251001_172734/accident_info.json"
       },
       {
         "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-        "publisher": "NBC News",
+        "source_domain": "nbcnews.com",
         "extracted_at": "2025-10-01T14:36:29-07:00",
         "extraction_confidence_score": 0.55,
-        "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_213244/accident_info.json",
-        "reported_key_points": [
-          "Region and mountain name details",
-          "Counts (4 involved, 3 fatalities, 1 injured)",
-          "Response agencies (Okanogan County Sheriff's Office, UW Medicine)",
-          "Self-rescue details in darkness"
-        ]
+        "__file_path": "/artifacts/nbcnews_com/20251001_213244/accident_info.json"
       },
       {
         "source_url": "https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908",
-        "publisher": "NBC News",
+        "source_domain": "nbcnews.com",
         "extracted_at": "2025-10-01T16:22:34-07:00",
-        "extraction_confidence_score": 0.55,
-        "__file_path": "/workspaces/structuring-test/artifacts/nbcnews_com/20251001_162125/accident_info.json",
-        "reported_key_points": [
-          "Pre-extracted route/equipment/fall metrics corroborating other sources"
-        ]
+        "__file_path": "/artifacts/nbcnews_com/20251001_162125/accident_info.json"
       },
       {
         "source_url": "https://www.columbian.com/news/2025/may/16/what-to-know-about-the-400-foot-fall-that-killed-3-climbers-and-the-sole-survivor-who-trekked-out/",
-        "publisher": "The Columbian (AP)",
         "source_name": "The Associated Press",
+        "source_domain": "columbian.com",
         "extracted_at": "2025-10-01T16:46:48-07:00",
         "extraction_confidence_score": 0.55,
-        "__file_path": "/workspaces/structuring-test/artifacts/columbian_com/20251001_164427/accident_info.json",
-        "reported_key_points": [
-          "Approximate 400 ft fall",
-          "Survivor called 911 from a payphone about 40 miles away",
-          "Detailed survivor injury symptoms (head bruises, fluid from ears; difficulty breathing)",
-          "Light snowfall conditions",
-          "Pitons and backup anchor practice context",
-          "GPS device carried by group used for coordinates by SAR"
-        ]
+        "__file_path": "/artifacts/columbian_com/20251001_164427/accident_info.json"
       },
       {
         "source_url": "https://www.climbing.com/news/climbing-fatality-washington/",
-        "publisher": "Climbing",
-        "extracted_at": "2025-10-01T14:31:18-07:00",
-        "extraction_confidence_score": 0.34,
-        "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_212657/accident_info.json",
-        "reported_key_points": [
-          "Accident date: Saturday, May 10",
-          "Route: Early Winter Couloir (AI3 M4+); ~1,100 ft line",
-          "200 ft near-vertical fall + ~200 ft tumble (~400 ft total)",
-          "Bodies recovered by Snohomish County Helicopter Rescue Team",
-          "Deceased injuries: severe head trauma and multiple leg fractures",
-          "Rope attached to a single weathered piton; backup status unknown",
-          "All four attached to same rope"
-        ]
-      },
-      {
-        "source_url": "https://www.climbing.com/news/climbing-fatality-washington/",
-        "publisher": "Climbing",
+        "source_domain": "climbing.com",
         "extracted_at": "2025-10-01T16:22:34-07:00",
         "extraction_confidence_score": 0.34,
-        "__file_path": "/workspaces/structuring-test/artifacts/climbing_com/20251001_162126/accident_info.json",
-        "reported_key_points": [
-          "Pre-extracted equipment (piton, anchor, rope) and fall metrics corroborating narrative"
-        ]
+        "__file_path": "/artifacts/climbing_com/20251001_212657/accident_info.json"
+      },
+      {
+        "source_url": "https://www.climbing.com/news/climbing-fatality-washington/",
+        "source_domain": "climbing.com",
+        "extracted_at": "2025-10-01T16:22:34-07:00",
+        "__file_path": "/artifacts/climbing_com/20251001_162126/accident_info.json"
+      }
+    ],
+    "confidence": {
+      "overall_preferred_source_domain": "nbcnews.com",
+      "overall_preferred_source_confidence": 0.64,
+      "notes": "Where fields conflicted but could be reconciled (e.g., fall height), the record includes a unified representation with provenance. Accident date corrected from article narratives."
+    }
+  },
+  "604bce0c3f3dcb628d8a324ceca019fe": {
+    "event_id": "b99834bc19bb",
+    "title": "Ice climber fatality at The Junkyards near Canmore (Eugene/Yevhen/Zhenya Vahin, 33)",
+    "accident_date": "2025-01-23",
+    "location": {
+      "area_name": "The Junkyards",
+      "alternate_names": [
+        "Junkyards"
+      ],
+      "nearby": "Grassi Lakes",
+      "region": "Canmore, Bow Valley",
+      "state_province": "Alberta",
+      "country": "Canada"
+    },
+    "activity_type": "ice climbing",
+    "accident_type": "fall",
+    "roped_status": "unroped",
+    "fall_distance_known": false,
+    "num_people_involved": 1,
+    "num_fatalities": 1,
+    "num_injured": 0,
+    "num_rescued": 0,
+    "people": [
+      {
+        "name": "Eugene Vahin",
+        "alternate_names": [
+          "Eugene (Yevhen) Vahin",
+          "Eugene (Zhenya) Vahin",
+          "Yevhen Vahin",
+          "Zhenya Vahin"
+        ],
+        "age": 33,
+        "outcome": "fatality"
+      }
+    ],
+    "rescue_teams_involved": [
+      "Kananaskis Mountain Rescue"
+    ],
+    "response_agencies": [
+      "RCMP"
+    ],
+    "rescue_method": "Ground recovery; body carried out by Kananaskis Mountain Rescue to RCMP",
+    "bodies_recovery_method": "ground carry-out",
+    "accident_summary_text": "On January 23, 2025, 33-year-old ice climber Eugene (Yevhen/Zhenya) Vahin suffered a fatal unroped fall at The Junkyards near Grassi Lakes in Canmore, Alberta. RCMP and Kananaskis Mountain Rescue responded to an overdue-climber report and recovered his body. Officials said the exact circumstances and fall distance were unclear.",
+    "timeline_text": "Jan 23: After a missed check-in and overdue report, RCMP requested assistance. Kananaskis Mountain Rescue deployed, located Vahin deceased at The Junkyards near Grassi Lakes, and recovered him to RCMP later that evening.",
+    "reported_circumstances": {
+      "summary": "Vahin was reported to be unroped and likely near the top of a route when he slipped; the fall was not captured on his camera. The precise fall distance remains unknown.",
+      "injury_details": "Medical examiners reportedly indicated severe head injury and internal bleeding."
+    },
+    "quoted_dialogue": [
+      "The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased.",
+      "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+    ],
+    "accident_causes": {
+      "rescue_and_outcome": {
+        "remains_recovered": true
+      },
+      "cause_classification": {
+        "primary_cause_category": "unknown",
+        "narrative_summary": "Climber was found deceased after an apparent unroped fall; exact circumstances and fall distance were not determined."
+      }
+    },
+    "sources": [
+      {
+        "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+        "extracted_at": "2025-10-02T14:47:36-07:00"
+      },
+      {
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "extracted_at": "2025-10-02T14:41:03-07:00"
+      },
+      {
+        "source_url": "https://cochranenow.com/articles/tragic-fall-claims-canmore-ice-climber-",
+        "extracted_at": "2025-10-02T14:41:03-07:00"
+      },
+      {
+        "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+        "extracted_at": "2025-10-02T14:41:03-07:00"
+      }
+    ],
+    "excluded_sources": [
+      {
+        "source_url": "https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/",
+        "reason": "Outlier/contradictory event details (Index Town Wall, Washington; different incident)."
+      }
+    ],
+    "provenance": [
+      {
+        "field_path": "people[0].name",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "later identified as Eugene (Yevhen) Vahin"
+      },
+      {
+        "field_path": "people[0].alternate_names",
+        "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+        "type": "article_text",
+        "verbatim": "Eugene (Zhenya) Vahin"
+      },
+      {
+        "field_path": "people[0].age",
+        "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+        "type": "article_text",
+        "verbatim": "A 33-year-old ice climber"
+      },
+      {
+        "field_path": "activity_type",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "A 33-year-old ice climber fell to his death"
+      },
+      {
+        "field_path": "location.area_name",
+        "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+        "type": "article_text",
+        "verbatim": "at the Junkyards near Canmore"
+      },
+      {
+        "field_path": "location.nearby",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "near Grassi Lakes"
+      },
+      {
+        "field_path": "response_agencies",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "RCMP and emergency crews along with Kananaskis Mountain Rescue responded"
+      },
+      {
+        "field_path": "rescue_teams_involved[0]",
+        "source_url": "https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916",
+        "type": "article_text",
+        "verbatim": "Kananaskis Mountain Rescue"
+      },
+      {
+        "field_path": "rescue_method",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+      },
+      {
+        "field_path": "accident_date",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "On Jan. 23, RCMP and emergency crews..."
+      },
+      {
+        "field_path": "roped_status",
+        "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+        "type": "article_text",
+        "verbatim": "Eugene Vahin passed away on January 23, after an unroped fall at The Junkyards"
+      },
+      {
+        "field_path": "fall_distance_known",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "There are no details on what happened or how far Vahin fell."
+      },
+      {
+        "field_path": "reported_circumstances.injury_details",
+        "source_url": "https://www.climbing.com/news/climbing-influencer-dies-fall/",
+        "type": "article_text",
+        "verbatim": "The medical examiners told her Vahin likely died from a combination of severe head injury and internal bleeding."
+      },
+      {
+        "field_path": "quoted_dialogue[0]",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased,"
+      },
+      {
+        "field_path": "quoted_dialogue[1]",
+        "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
+        "type": "article_text",
+        "verbatim": "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
       }
     ]
   }

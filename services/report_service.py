@@ -24,6 +24,7 @@ from services.report_prompts import (
     VERIFIER_USER_TMPL,
 )
 from services.report_render import front_matter, json_ld, as_markdown_timeline, as_table, as_bullets
+from token_tracker import add_usage, summary as token_summary
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,15 @@ def _llm_json(model: str, system: str, user_text: str) -> Dict[str, Any]:
         record_call(1)
     except Exception:
         pass
+    try:
+        usage = getattr(resp, 'usage', None)
+        if usage is not None:
+            try:
+                add_usage(int(getattr(usage, 'prompt_tokens', 0) or 0), int(getattr(usage, 'completion_tokens', 0) or 0))
+            except Exception:
+                pass
+    except Exception:
+        pass
     return json.loads(resp.choices[0].message.content.strip())
 
 
@@ -64,6 +74,15 @@ def _llm_text(model: str, system: str, user_text: str) -> str:
     resp = _llm_chat_create(messages=messages, model=model)
     try:
         record_call(1)
+    except Exception:
+        pass
+    try:
+        usage = getattr(resp, 'usage', None)
+        if usage is not None:
+            try:
+                add_usage(int(getattr(usage, 'prompt_tokens', 0) or 0), int(getattr(usage, 'completion_tokens', 0) or 0))
+            except Exception:
+                pass
     except Exception:
         pass
     return resp.choices[0].message.content
@@ -111,8 +130,18 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
     )
     # For now we don't apply redactions automatically; we can append issues at the end
 
+    # Compose a clean title: prefer explicit 'title' in fused record, then mountain/area and activity
+    title_seed = event.get('title') or event.get('mountain_name') or event.get('area_name') or event.get('location') or event.get('region')
+    # If title_seed is a dict (sometimes the fused record stores a nested location), stringify useful parts
+    if isinstance(title_seed, dict):
+        parts = []
+        for k in ('area_name','nearby','region'):
+            v = title_seed.get(k)
+            if v:
+                parts.append(str(v))
+        title_seed = ', '.join(parts) if parts else 'Unknown'
     meta = {
-        'title': f"{(event.get('mountain_name') or event.get('peak') or event.get('area_name') or 'Unknown')} — {event.get('accident_type','Incident')} ({event.get('accident_date','')})",
+        'title': f"{title_seed} — {event.get('accident_type','Incident')} ({event.get('accident_date','')})",
         'description': event.get('accident_summary_text') or '',
         'date': event.get('accident_date') or '',
         'region': event.get('region') or '',
@@ -130,6 +159,12 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
     outp = REPORTS_DIR / f"{eid}.md"
     with open(outp, 'w', encoding='utf-8') as f:
         f.write(final_md)
+    # Print token summary for report generation step
+    try:
+        s = token_summary()
+        logger.info(f"[tokens] reports prompt={s['prompt']}, completion={s['completion']}, total={s['total']}")
+    except Exception:
+        pass
     return outp
 
 

@@ -22,6 +22,7 @@ from config import SERVICE_TIER
 from urllib.parse import urlparse
 from store_artifacts import force_rebuild_and_upload_artifacts_csv
 from logging_config import configure_logging
+from token_tracker import summary as token_summary
 
 # configure module-level logger; main() will configure root logging
 logger = logging.getLogger(__name__)
@@ -373,3 +374,10 @@ if __name__ == "__main__":
                     wrote += 1
                     ts_print(f"[report] wrote {pth}")
             ts_print(f"[service] reports: {wrote}/{len(targets)} written{' (dry-run)' if args.dry_run else ''}")
+
+    # Print overall token usage summary for this run
+    try:
+        s = token_summary()
+        ts_print(f"[tokens] run summary: prompt={s['prompt']}, completion={s['completion']}, total={s['total']}")
+    except Exception:
+        pass

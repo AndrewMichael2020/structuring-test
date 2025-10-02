@@ -82,6 +82,7 @@ except Exception:
     _HAS_DATEUTIL = False
 
 from config import ACCIDENT_INFO_MODEL, SERVICE_TIER
+from accident_schema import _SCHEMA_TEXT
 try:
     try:
     # prefer the DB upsert when available, but also expose a Drive-only
@@ -395,11 +396,16 @@ def batch_extract_accident_info(
             continue
 
         # single LLM call for the batch
+        # Provide the canonical schema text up-front so the model returns the
+        # same STRICT JSON structure as single-item extraction. Include the
+        # items payload after the schema to keep the prompt size reasonable.
         prompt = (
-            "System: Return a JSON array with one extraction object per item. "
+            "System: Return a JSON array with one extraction object per item.\n"
+            "Follow the SCHEMA below exactly and return only a JSON array.\n\n"
+            "SCHEMA:\n" + _SCHEMA_TEXT + "\n\n"
             "Use the provided PRE-EXTRACTED fields plus ARTICLE_FOCUSED and ARTICLE_FULL. "
             "Prefer ARTICLE_FOCUSED when it seems like a cleaned summary; if it's too short or teaser, "
-            "supplement with ARTICLE_FULL. Do not hallucinate; only infer cautiously.\n"
+            "supplement with ARTICLE_FULL. Do not hallucinate; only infer cautiously.\n\n"
         )
         prompt += json.dumps(payload, ensure_ascii=False)
 

@@ -31,6 +31,7 @@ import hashlib
 from accident_llm import _chat_create as _llm_chat_create, _OPENAI_AVAILABLE
 from openai_call_manager import can_make_call, record_call
 from config import EVENT_MERGE_MODEL, EVENT_FUSION_MODEL, SERVICE_TIER
+from token_tracker import add_usage
 
 # Best-effort .env loading
 try:
@@ -398,6 +399,17 @@ def run_merge_and_fusion(dry_run: bool = False, cache_clear: bool = False) -> di
     enriched_count = 0
     fused_count = 0
     for eid, gpaths in groups.items():
+        # Skip event if fused output already exists and is newer than inputs (no-op)
+        fused_path = FUSED_DIR / f"{eid}.json"
+        if fused_path.exists() and not cache_clear:
+            try:
+                fused_mtime = fused_path.stat().st_mtime
+                latest_input = max((p.stat().st_mtime for p in gpaths), default=0)
+                if fused_mtime >= latest_input:
+                    # nothing to do for this event
+                    continue
+            except Exception:
+                pass
         enriched = merge_event(eid, gpaths, dry_run, merge_cache)
         if enriched:
             enriched_count += 1

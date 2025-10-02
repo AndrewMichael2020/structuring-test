@@ -1,19 +1,79 @@
 {
-  "extracted_at": "2025-10-01T16:22:34-07:00",
-  "article_text": "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews. Callers to 911 about 4 p.m. Thursday reported seeing the man fall and hearing cries for help, Andrews said. Your browser is set to private mode. To continue reading, log in or subscribe. Already a subscriber? Log in now.",
-  "scraped_full_text": "Man dies after 300-foot fall while climbing in Index Man dies after 300-foot fall while climbing in Index A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
-  "pre_extracted": {
-    "lead_sentences": [
-      "A man in his 20s died after falling more than about 300 feet while climbing at Index Town Wall, a destination that draws expert climbers from around the world, according to Sky Valley Fire Chief Eric Andrews.",
-      "Callers to 911 about 4 p.m."
-    ],
-    "route_types_pre": [
-      "wall"
-    ],
-    "fall_height_feet_pre": 300,
-    "fall_height_meters_pre": 91.4
+  "extracted_at": "2025-10-02T13:41:03-07:00",
+  "article_text": "A 33-year-old ice climber fell to his death at the Junkyards near Canmore in late January. On Jan. 23, RCMP and emergency crews along with Kananaskis Mountain Rescue responded to reports of an overdue climber, later identified as Eugene (Yevhen) Vahin, who was found dead at the popular local climbing spot near Grassi Lakes. “The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased,” said Jeremy Mackenzie, mountain rescue specialist and team leader with Kananaskis Mountain Rescue. “We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP.” There are no details on what happened or how far Vahin fell.",
+  "scraped_full_text": "Ice climber falls to their death near Canmore Ice climber falls to their death near Canmore A 33-year-old ice climber fell to his death at the Junkyards near Canmore in late January. On Jan. 23, RCMP and emergency crews along with Kananaskis Mountain Rescue responded to reports of an overdue climber, later identified as Eugene (Yevhen) Vahin, who was found dead at the popular local climbing spot near Grassi Lakes. “The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased,” said Jeremy Mackenzie, mountain rescue specialist and team leader with Kananaskis Mountain Rescue. “We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP.” There are no details on what happened or how far Vahin fell. “I know from talking to the team members that there was uncertainty about how far it was,” said Mackenzie. Born in Ukraine in 1991, Vahin has been living in Canmore for a couple of years. His social media account shows he was an active outdoorsman, starting up ice climbing as recently as fall 2024. He was an avid hiker, rock climber and runner, who completed the Virtual Banff Marathon from Canmore to Banff and back last year in a time of 4:37:55. “I’m living my dream,” he wrote on Instagram. “I have never enjoyed my life as much as I have in the last year,” he wrote in September 2024. Kananaskis Mountain Rescue reminds ice climbers that winter activities carry an additional risk due to cold and are advised to pack warm clothing to protect from wind, snow or wet weather, along with food, water, matches or lighters, a paper map, First Aid kit, and headlamp. In addition, rescuers say it is vital to carry appropriate equipment for a climb such as a cell phone or satellite communication device as well as essential rescue gear like a transceiver, probe and shovel – and have the knowledge to use it. Mackenzie said the environment for ice climbers is less forgiving in terms of the cold and shorter winter hours. “If you were to get stranded or injured, you definitely have a little bit less margins there for being able to keep yourself warm and alive and so on,” he said. Mackenzie also pointed out that many ice climbing routes are in avalanche terrain, noting it is critical to check www.avalanche.ca for current avalanche conditions. He said the Avalanche Terrain Exposure Scale (ATES) is also a good tool, which was developed to help people better evaluate the risks that are inherent in travelling in avalanche terrain. The ATES works by applying the information provided in public avalanche forecasts in combination with avalanche terrain ratings that have been configured for many of the most popular trails and routes. “Consult the avalanche bulletin, carry the right equipment, know how to use it, and recognize when you probably shouldn’t be there,” Mackenzie said. “Somewhat new in the ice climbing world is recognizing and mitigating avalanche hazard.” Vahin’s was the second ice climbing fatality in the region this winter. Off-duty Calgary army reserve officer, Maj. Dave Peabody, fell 150 metres to his death while ice climbing the Stanley Headwall in Kootenay National Park on Dec. 26.",
+  "region": "near Canmore",
+  "mountain_name": "The Junkyards",
+  "activity_type": "ice climbing",
+  "accident_type": "fall",
+  "num_people_involved": 1,
+  "num_fatalities": 1,
+  "num_injured": 0,
+  "num_rescued": 0,
+  "people": [
+    {
+      "name": "Eugene (Yevhen) Vahin",
+      "age": 33,
+      "outcome": "fatality"
+    }
+  ],
+  "rescue_teams_involved": [
+    "Kananaskis Mountain Rescue"
+  ],
+  "response_agencies": [
+    "RCMP"
+  ],
+  "rescue_method": "Ground recovery; body carried out by Kananaskis Mountain Rescue to RCMP",
+  "bodies_recovery_method": "ground carry-out",
+  "accident_summary_text": "A 33-year-old ice climber, Eugene (Yevhen) Vahin, was found deceased after a fall at The Junkyards near Grassi Lakes, near Canmore. RCMP and emergency crews, along with Kananaskis Mountain Rescue, responded to an overdue climber report and recovered the body. No details were released about the circumstances or fall distance.",
+  "timeline_text": "Jan. 23: RCMP requested assistance for an overdue climber at The Junkyards near Grassi Lakes. Kananaskis Mountain Rescue deployed four staff, located the subject deceased, and carried him out to RCMP.",
+  "quoted_dialogue": [
+    "The RCMP requested our assistance with a missing climber and when we were activated we located the subject and unfortunately he was deceased,",
+    "We had four of our staff respond and ended up just getting him out of that terrain and down to the RCMP."
+  ],
+  "accident_causes": {
+    "rescue_and_outcome": {
+      "remains_recovered": true
+    },
+    "cause_classification": {
+      "primary_cause_category": "unknown",
+      "narrative_summary": "Climber was found deceased after a fall; exact circumstances and fall distance were not provided."
+    }
   },
-  "source_url": "https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/",
+  "extraction_confidence_score": 0.46,
+  "provenance": [
+    {
+      "field": "people.name",
+      "type": "article_text",
+      "pointer": "ARTICLE",
+      "verbatim": "later identified as Eugene (Yevhen) Vahin"
+    },
+    {
+      "field": "activity_type",
+      "type": "article_text",
+      "pointer": "ARTICLE",
+      "verbatim": "A 33-year-old ice climber fell to his death"
+    },
+    {
+      "field": "location",
+      "type": "article_text",
+      "pointer": "ARTICLE",
+      "verbatim": "at the Junkyards near Canmore ... near Grassi Lakes"
+    },
+    {
+      "field": "response",
+      "type": "article_text",
+      "pointer": "ARTICLE",
+      "verbatim": "On Jan. 23, RCMP and emergency crews along with Kananaskis Mountain Rescue responded"
+    },
+    {
+      "field": "quoted_dialogue",
+      "type": "article_text",
+      "pointer": "ARTICLE",
+      "verbatim": "“The RCMP requested our assistance ... he was deceased,” and “We had four of our staff respond ... down to the RCMP.”"
+    }
+  ],
+  "source_url": "https://www.lakelandtoday.ca/beyond-local/ice-climber-falls-to-death-near-canmore-10185389",
   "event_id": "b99834bc19bb",
-  "__file_path": "/workspaces/structuring-test/artifacts/seattletimes_com/20251001_162126/accident_info.json"
+  "__file_path": "/workspaces/structuring-test/artifacts/lakelandtoday_ca/20251002_133828/accident_info.json"
 }
