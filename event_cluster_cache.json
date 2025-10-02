@@ -36,5 +36,53 @@
         12
       ]
     }
+  ],
+  "cf9db8fe1737454a36c993a7ec080cba": [
+    {
+      "cluster_id": 0,
+      "indices": [
+        0,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "indices": [
+        2,
+        3,
+        4,
+        13,
+        18,
+        19
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "indices": [
+        12
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "indices": [
+        14,
+        15,
+        16,
+        17,
+        20
+      ]
+    }
   ]
 }

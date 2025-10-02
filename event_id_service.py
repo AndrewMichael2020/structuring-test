@@ -52,7 +52,7 @@ BASE_DIR = Path(__file__).parent
 ARTIFACTS_DIR = BASE_DIR / 'artifacts'
 CACHE_PATH = BASE_DIR / 'event_cluster_cache.json'
 
-from config import EVENT_CLUSTER_MODEL  # type: ignore
+from config import EVENT_CLUSTER_MODEL, SERVICE_TIER  # type: ignore
 
 
 def _iter_accident_jsons(root: Path) -> List[Path]:
@@ -152,6 +152,7 @@ def cluster_with_llm(records: List[dict]) -> List[dict] | None:
             if usage is not None:
                 _TOKEN_COUNTS['prompt'] += int(getattr(usage, 'prompt_tokens', 0) or 0)
                 _TOKEN_COUNTS['completion'] += int(getattr(usage, 'completion_tokens', 0) or 0)
+                print(f"[tokens] model={EVENT_CLUSTER_MODEL} tier={SERVICE_TIER} prompt={int(getattr(usage,'prompt_tokens',0) or 0)} completion={int(getattr(usage,'completion_tokens',0) or 0)} total={int(getattr(usage,'prompt_tokens',0) or 0)+int(getattr(usage,'completion_tokens',0) or 0)}")
         except Exception:
             pass
         try:
@@ -265,4 +266,4 @@ if __name__ == '__main__':
     stats = assign_ids_over_artifacts(dry_run=args.dry_run, cache_clear=args.cache_clear)
     total = _TOKEN_COUNTS['prompt'] + _TOKEN_COUNTS['completion']
     print(f"✅ Assigned event IDs over {stats['files']} files across {stats['clusters']} clusters. Written: {stats['written']}{' (dry-run)' if args.dry_run else ''}.")
-    print(f"[model] event_cluster={EVENT_CLUSTER_MODEL} | tokens: prompt={_TOKEN_COUNTS['prompt']}, completion={_TOKEN_COUNTS['completion']}, total={total}")
+    print(f"[model] event_cluster={EVENT_CLUSTER_MODEL} tier={SERVICE_TIER} | tokens: prompt={_TOKEN_COUNTS['prompt']}, completion={_TOKEN_COUNTS['completion']}, total={total}")

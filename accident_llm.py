@@ -12,7 +12,7 @@ from openai import OpenAI
 
 from accident_schema import _SCHEMA_TEXT, _PROMPT
 from accident_preextract import pre_extract_fields
-from config import ACCIDENT_INFO_MODEL
+from config import ACCIDENT_INFO_MODEL, SERVICE_TIER
 from openai_call_manager import can_make_call, record_call
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,18 @@ def _chat_create(messages: list, model: str):
     kwargs = {'model': model, 'messages': messages}
     if _supports_temperature(model):
         kwargs['temperature'] = 0
-    return _client.chat.completions.create(**kwargs)
+    resp = _client.chat.completions.create(**kwargs)
+    # token usage print (best-effort)
+    try:
+        usage = getattr(resp, 'usage', None)
+        if usage is not None:
+            pt = int(getattr(usage, 'prompt_tokens', 0) or 0)
+            ct = int(getattr(usage, 'completion_tokens', 0) or 0)
+            tt = pt + ct
+            print(f"[tokens] model={model} tier={SERVICE_TIER} prompt={pt} completion={ct} total={tt}")
+    except Exception:
+        pass
+    return resp
 
 
 def llm_extract(article_text: str) -> dict:

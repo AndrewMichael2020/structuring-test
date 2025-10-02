@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from openai import OpenAI
+from config import SERVICE_TIER
 try:
     # Auto-load .env so OPENAI_API_KEY is picked up without manual export
     from dotenv import load_dotenv
@@ -124,7 +125,18 @@ def _chat_vision_json(client: OpenAI, model: str, image_data_url: str) -> str:
             {"type": "image_url", "image_url": {"url": image_data_url}},
         ]
     }]
-    resp = client.chat.completions.create(model=model, messages=messages)
+    extra = {}
+    # service_tier is not passed to OpenAI API, only used for logging
+    extra = {}
+    resp = client.chat.completions.create(model=model, messages=messages, **extra)
+    try:
+        usage = getattr(resp, 'usage', None)
+        if usage is not None:
+            pt = int(getattr(usage, 'prompt_tokens', 0) or 0)
+            ct = int(getattr(usage, 'completion_tokens', 0) or 0)
+            print(f"[tokens] model={model} tier={SERVICE_TIER} prompt={pt} completion={ct} total={pt+ct}")
+    except Exception:
+        pass
     return resp.choices[0].message.content.strip()
 
 

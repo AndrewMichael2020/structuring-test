@@ -1,11 +1,15 @@
 {
   "timezone": "America/Vancouver",
   "gazetteer_enabled": false,
+  "processing_tier": "standard",
   "models": {
     "ocr_vision": "gpt-5",
     "accident_info": "gpt-5",
     "event_cluster": "gpt-5-mini",
     "event_merge": "gpt-5-mini",
-    "event_fusion": "gpt-5"
+    "event_fusion": "gpt-5",
+    "report_planner": "gpt-5-mini",
+    "report_writer": "gpt-5",
+    "report_verifier": "gpt-5-mini"
   }
 }

@@ -30,7 +30,7 @@ import hashlib
 
 from accident_llm import _chat_create as _llm_chat_create, _OPENAI_AVAILABLE
 from openai_call_manager import can_make_call, record_call
-from config import EVENT_MERGE_MODEL, EVENT_FUSION_MODEL
+from config import EVENT_MERGE_MODEL, EVENT_FUSION_MODEL, SERVICE_TIER
 
 # Best-effort .env loading
 try:
@@ -240,6 +240,7 @@ def merge_event(eid: str, paths: List[Path], dry_run: bool, merge_cache: Dict[st
                         if usage is not None:
                             _TOKEN_COUNTS['merge']['prompt'] += int(getattr(usage, 'prompt_tokens', 0) or 0)
                             _TOKEN_COUNTS['merge']['completion'] += int(getattr(usage, 'completion_tokens', 0) or 0)
+                            print(f"[tokens] model={EVENT_MERGE_MODEL} tier={SERVICE_TIER} prompt={int(getattr(usage,'prompt_tokens',0) or 0)} completion={int(getattr(usage,'completion_tokens',0) or 0)} total={int(getattr(usage,'prompt_tokens',0) or 0)+int(getattr(usage,'completion_tokens',0) or 0)}")
                     except Exception:
                         pass
                     try:
@@ -313,6 +314,7 @@ def fuse_event(eid: str, enriched: dict, recs: List[dict], dry_run: bool, fuse_c
                     if usage is not None:
                         _TOKEN_COUNTS['fusion']['prompt'] += int(getattr(usage, 'prompt_tokens', 0) or 0)
                         _TOKEN_COUNTS['fusion']['completion'] += int(getattr(usage, 'completion_tokens', 0) or 0)
+                        print(f"[tokens] model={EVENT_FUSION_MODEL} tier={SERVICE_TIER} prompt={int(getattr(usage,'prompt_tokens',0) or 0)} completion={int(getattr(usage,'completion_tokens',0) or 0)} total={int(getattr(usage,'prompt_tokens',0) or 0)+int(getattr(usage,'completion_tokens',0) or 0)}")
                 except Exception:
                     pass
                 try:
@@ -423,5 +425,5 @@ if __name__ == '__main__':
     print(f"✅ Merge+Fusion complete over {stats['events']} events. Enriched: {stats['enriched']}, Fused: {stats['fused']}{' (dry-run)' if args.dry_run else ''}.")
     m_p = _TOKEN_COUNTS['merge']['prompt']; m_c = _TOKEN_COUNTS['merge']['completion']
     f_p = _TOKEN_COUNTS['fusion']['prompt']; f_c = _TOKEN_COUNTS['fusion']['completion']
-    print(f"[models] merge={EVENT_MERGE_MODEL}, fusion={EVENT_FUSION_MODEL}")
+    print(f"[models] merge={EVENT_MERGE_MODEL}, fusion={EVENT_FUSION_MODEL}, tier={SERVICE_TIER}")
     print(f"[tokens] merge prompt={m_p}, completion={m_c}, total={m_p+m_c}; fusion prompt={f_p}, completion={f_c}, total={f_p+f_c}")

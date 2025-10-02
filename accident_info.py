@@ -81,7 +81,7 @@ try:
 except Exception:
     _HAS_DATEUTIL = False
 
-from config import ACCIDENT_INFO_MODEL
+from config import ACCIDENT_INFO_MODEL, SERVICE_TIER
 try:
     try:
     # prefer the DB upsert when available, but also expose a Drive-only
@@ -131,7 +131,16 @@ def _chat_create(messages: list, model: str):
     if _supports_temperature(model):
         kwargs['temperature'] = 0
     if _client is not None:
-        return _client.chat.completions.create(**kwargs)
+        resp = _client.chat.completions.create(**kwargs)
+        try:
+            usage = getattr(resp, 'usage', None)
+            if usage is not None:
+                pt = int(getattr(usage, 'prompt_tokens', 0) or 0)
+                ct = int(getattr(usage, 'completion_tokens', 0) or 0)
+                print(f"[tokens] model={model} tier={SERVICE_TIER} prompt={pt} completion={ct} total={pt+ct}")
+        except Exception:
+            pass
+        return resp
     # delegate to shared LLM client (returns an OpenAI response object)
     return _al._chat_create(messages=messages, model=model)
 
