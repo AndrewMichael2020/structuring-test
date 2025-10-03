@@ -24,14 +24,14 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Build and Deploy to Cloud Run
-        id: deploy
-        run: |
-          URL=$(gcloud run deploy accident-reports-frontend \
-            --source ./app \
-            --region us-west1 --platform managed --allow-unauthenticated \
-            --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production --quiet \
-            --format='value(uri)')
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        run: >
+          gcloud run deploy accident-reports-frontend
+          --source ./app
+          --region us-west1 --platform managed --allow-unauthenticated
+          --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production
+          --quiet
 
       - name: Smoke test
-        run: curl -f "${{ steps.deploy.outputs.url }}/healthz"
+        run: |
+          URL=$(gcloud run services describe accident-reports-frontend --region us-west1 --format='value(status.url)')
+          scripts/smoke.sh "$URL"
