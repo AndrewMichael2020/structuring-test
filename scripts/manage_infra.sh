@@ -158,7 +158,7 @@ setup_all() {
     echo "▶️ Granting roles to Cloud Run deploy SA..."
     ROLES=(
       "roles/run.admin"
-      "roles/artifactregistry.writer"
+      "roles/artifactregistry.admin"    # Admin to allow creating the repo on first deploy
       "roles/iam.serviceAccountUser"
       "roles/cloudbuild.builds.editor"
       "roles/storage.objectAdmin"
