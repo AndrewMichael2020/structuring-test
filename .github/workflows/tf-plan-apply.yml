@@ -18,6 +18,7 @@ jobs:
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          audience: https://github.com/${{ github.repository_owner }}
           service_account: ${{ secrets.GCP_TERRAFORM_SA }}
       - uses: hashicorp/setup-terraform@v3
       - name: Terraform Init
@@ -39,6 +40,7 @@ jobs:
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          audience: https://github.com/${{ github.repository_owner }}
           service_account: ${{ secrets.GCP_TERRAFORM_SA }}
       - uses: hashicorp/setup-terraform@v3
       - name: Terraform Init
