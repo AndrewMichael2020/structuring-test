@@ -1,0 +1,13 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore.
+
+node_modules/
+.git/
+.github/
+.vscode/
+.env
+.env.*
+npm-debug.log
+coverage/
+
+# Don't ignore dist/ - it's built during the gcp-build process and needs to be in the final image
