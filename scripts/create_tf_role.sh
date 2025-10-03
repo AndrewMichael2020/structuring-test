@@ -13,10 +13,13 @@ echo "Checking for custom role ${ROLE_ID} in project ${PROJECT_ID}..."
 if gcloud iam roles describe "${ROLE_ID}" --project "${PROJECT_ID}" >/dev/null 2>&1; then
   echo "Custom role ${ROLE_ID} already exists. Updating..."
   
-  # Use a temporary file to avoid issues with stdin redirection in some gcloud versions.
+  # Fetch the current role definition to get its etag for safe updates.
   TMP_ROLE_FILE=$(mktemp)
   trap 'rm -f -- "$TMP_ROLE_FILE"' EXIT
+  gcloud iam roles describe "${ROLE_ID}" --project "${PROJECT_ID}" --format=yaml > "$TMP_ROLE_FILE"
 
+  # Overwrite specific fields, keeping the etag.
+  # Using yq would be cleaner, but this avoids a new dependency.
   cat > "$TMP_ROLE_FILE" <<EOF
 title: "Terraform Applier"
 description: "Minimal permissions for the structuring-test Terraform configuration"
@@ -35,6 +38,7 @@ includedPermissions:
   - run.services.setIamPolicy
   - iam.serviceAccounts.create
   - iam.serviceAccounts.get
+etag: $(gcloud iam roles describe "${ROLE_ID}" --project "${PROJECT_ID}" --format="value(etag)")
 EOF
   gcloud iam roles update "${ROLE_ID}" --project "${PROJECT_ID}" --file="$TMP_ROLE_FILE"
 else
