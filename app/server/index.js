@@ -19,7 +19,9 @@ import fs from 'fs/promises';
 // Health check endpoint - must be at the root. Place before static middleware
 // so that probes reach this route reliably and are not affected by
 // static file serving or SPA catch-all behaviour.
-app.get('/healthz', (_req, res) => {
+// Health check endpoint - respond to any method so probes (GET/HEAD/etc.)
+// reliably receive a healthy response. Keep this before static middleware.
+app.all('/healthz', (_req, res) => {
   // For a more robust health check, you could verify GCS connectivity here.
   // For now, a simple 'ok' is sufficient.
   res.status(200).send('ok');
@@ -52,8 +54,39 @@ apiRouter.get('/reports/list', async (_req, res) => {
       }
     }
     const url = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
-    const r = await axios.get(url);
-    res.json(r.data);
+    try {
+      const r = await axios.get(url);
+      return res.json(r.data);
+    } catch (fetchErr) {
+      // If list.json is not present in the bucket, try a public bucket listing
+      // fallback. Many deployments write a `reports/list.json` manifest but
+      // sometimes the bucket only contains the raw markdown files. If the
+      // bucket is publicly listable, we can parse the XML listing and build a
+      // minimal list.json on the fly.
+      if (fetchErr.response?.status === 404) {
+        try {
+          const listUrl = `https://storage.googleapis.com/${BUCKET}?prefix=reports/`;
+          const listResp = await axios.get(listUrl);
+          const xml = listResp.data || '';
+          // Extract <Key> elements, filter .md files in the reports/ prefix
+          const keys = Array.from(xml.matchAll(/<Key>(.*?)<\/Key>/g)).map(m => m[1]);
+          const ids = keys.filter(k => k.startsWith('reports/') && k.endsWith('.md'))
+            .map(k => path.basename(k, '.md'));
+          const list = ids.map(id => ({ id, url: `/reports/${id}` }));
+          console.warn(`[API /reports/list] list.json missing; returning manifest from public bucket listing (${ids.length} items)`);
+          return res.json({ reports: list });
+        } catch (listErr) {
+          const errorMessage = `list.json not found in bucket: ${BUCKET}`;
+          console.error(`[API /reports/list] Error: ${errorMessage} (and public listing fallback failed: ${listErr})`);
+          return res.status(404).json({ error: 'server_error', message: errorMessage });
+        }
+      }
+      const errorMessage = fetchErr.response?.status === 404
+        ? `list.json not found in bucket: ${BUCKET}`
+        : String(fetchErr);
+      console.error(`[API /reports/list] Error: ${errorMessage}`);
+      return res.status(fetchErr.response?.status || 500).json({ error: 'server_error', message: errorMessage });
+    }
   } catch (e) {
     const errorMessage = e.response?.status === 404
       ? `list.json not found in bucket: ${BUCKET}`
