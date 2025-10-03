@@ -10,7 +10,7 @@
     "gcp-build": "vite build",
     "preview": "vite preview",    "start": "NODE_ENV=production node server/index.js",
     "lint": "eslint . --ext .js,.jsx",
-    "test": "jest --passWithNoTests"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests"
   },
   "engines": {
     "node": ">=20.0.0"

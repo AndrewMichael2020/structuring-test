@@ -58,7 +58,6 @@ npm test
 
 Notes:
 - Jest tests include server behavior and HTML sanitization.
-- React Router warnings in tests are expected; they don’t affect pass/fail.
 
 ## Build & preview
 
