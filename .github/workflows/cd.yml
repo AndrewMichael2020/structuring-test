@@ -27,7 +27,8 @@ jobs:
         working-directory: app
         run: |
           gcloud builds submit \
-            --pack image=us-west1-docker.pkg.dev/gcp-agents-tests/web-app/accident-reports-frontend:latest
+            --pack image=us-west1-docker.pkg.dev/gcp-agents-tests/web-app/accident-reports-frontend:latest \
+            --async
 
       - name: Deploy Cloud Run
         run: |
