@@ -23,7 +23,7 @@ import fs from 'fs/promises';
 // reliably receive a healthy response. Keep this before static middleware.
 app.all('/healthz', (_req, res) => {
   // For a more robust health check, you could verify GCS connectivity here.
-  // For now, a simple 'ok' is sufficient.
+  // For now, a simple 'ok' is sufficient. 
   res.status(200).send('ok');
 });
 

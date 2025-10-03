@@ -53,3 +53,5 @@ google-auth-oauthlib
 # python main.py --urls-file urls.txt --batch-size 7 --assign-event-ids --merge-events --generate-reports
 
 # python main.py --assign-event-ids --merge-events --generate-reports --cache-clear
+
+# Test-deploy from workspace: gcloud run deploy accident-reports-frontend --source ./app --region us-west1 --platform managed --allow-unauthenticated --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production,OPENAI_API_KEY=${OPENAI_API_KEY} --quiet
