@@ -4,9 +4,9 @@
 # https://example.com/article-a
 # https://example.com/article-b, https://example.com/article-c
 
-# https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908
-# https://www.climbing.com/news/climbing-fatality-washington/
-# https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/
+https://www.nbcnews.com/news/us-news/official-say-miraculous-climber-survived-fall-washington-mountain-rcna206908
+https://www.climbing.com/news/climbing-fatality-washington/
+https://www.seattletimes.com/seattle-news/law-justice/man-dies-after-200-foot-fall-climbing-in-index/
 
 https://www.rmoutlook.com/canmore/ice-climber-falls-to-death-at-junkyards-near-canmore-10183916
 https://www.climbing.com/news/climbing-influencer-dies-fall/

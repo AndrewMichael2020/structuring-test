@@ -58,7 +58,7 @@ Open a report locally: http://localhost:8093/reports/1976c2189c78
 - `accident_llm.py` — LLM wrapper (OpenAI). Respects model config and call caps; omits temperature for GPT-5-family models.
 - `accident_preextract.py` — Deterministic regex heuristics (dates, people, fall height, etc.).
 - `accident_postprocess.py` — Normalization/validation and heuristic confidence scoring.
-- `store_artifacts.py` — Rebuilds `artifacts/artifacts.csv` from on-disk JSON; adds counts and a raw `artifact_json` column; optional Drive upload.
+- `store_artifacts.py` — Rebuilds `artifacts/artifacts.csv` from on-disk JSON; adds counts and a raw `artifact_json` column.
 - `main.py` — CLI. Modes: `all`, `text-only`, `ocr-only`. Batch input via `--urls-file`.
 - `app/` — Frontend web app.
   - React + Tailwind UI served by Express; SPA with routes for list and individual report pages.
@@ -89,7 +89,6 @@ Open a report locally: http://localhost:8093/reports/1976c2189c78
   - `PLAYWRIGHT_HEADLESS` — `true/false` for debugging; default `true`.
   - `PLAYWRIGHT_STEALTH` — `true/false` stealth mode.
   - `PLAYWRIGHT_NAV_TIMEOUT_MS` — navigation timeout (capped sensibly in code).
-  - Drive: set environment as per `drive_storage.py` to enable upload.
   - Frontend/server:
     - `GCS_BUCKET` — GCS bucket name hosting `reports/list.json` and `reports/<id>.md`.
     - `DEV_FAKE` — when `1`, server returns local sample list instead of hitting GCS.
