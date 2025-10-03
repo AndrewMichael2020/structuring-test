@@ -4,5 +4,5 @@ dist
 .git
 .github
 .vscode
-.env
-coverage
+.env 
+coverage 
