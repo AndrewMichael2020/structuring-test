@@ -91,6 +91,7 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/iam.serviceAccountUser" --quiet
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/cloudbuild.builds.editor" --quiet
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/storage.objectAdmin" --quiet
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/serviceusage.serviceUsageConsumer" --quiet
 
 echo "Binding WIF principalSet to SAs (workloadIdentityUser)..."
 PRINCIPAL_SET="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_REPO}"
@@ -114,18 +115,18 @@ echo "You can now re-run the failed GitHub Actions workflow."
 
 ### What to do next
 
-1.  **Run the new setup script** from your Cloud Shell. This will re-configure GCP and, most importantly, set the GitHub secrets for you automatically.
+# 1.  **Run the new setup script** from your Cloud Shell. This will re-configure GCP and, most importantly, set the GitHub secrets for you automatically.
 
-   ```bash
-   # Make sure you are logged into the GitHub CLI first: gh auth login
-   PROJECT_ID=gcp-agents-tests GITHUB_REPO=AndrewMichael2020/structuring-test bash scripts/setup_all.sh
-   ```
+#    ```bash
+#    # Make sure you are logged into the GitHub CLI first: gh auth login
+#    PROJECT_ID=gcp-agents-tests GITHUB_REPO=AndrewMichael2020/structuring-test bash scripts/setup_all.sh
+#    ```
 
-2.  **Re-run the GitHub Action.** After the script completes, go to the "Actions" tab in your GitHub repository and re-run the failed "CD" workflow.
+# 2.  **Re-run the GitHub Action.** After the script completes, go to the "Actions" tab in your GitHub repository and re-run the failed "CD" workflow.
 
-This process will eliminate any possibility of an incorrect secret and should finally resolve the authentication error.
+# This process will eliminate any possibility of an incorrect secret and should finally resolve the authentication error.
 
-<!--
-[PROMPT_SUGGESTION]The deployment succeeded! How can I view the application logs in Google Cloud?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Can you explain the IAM roles being granted in `setup_all.sh` and suggest how to tighten them for better security?[/PROMPT_SUGGESTION]
-->
+# <!--
+# [PROMPT_SUGGESTION]The deployment succeeded! How can I view the application logs in Google Cloud?[/PROMPT_SUGGESTION]
+# [PROMPT_SUGGESTION]Can you explain the IAM roles being granted in `setup_all.sh` and suggest how to tighten them for better security?[/PROMPT_SUGGESTION]
+# ->
