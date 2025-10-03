@@ -1,4 +1,6 @@
-# Optional Dockerfile (Cloud Buildpack is used in CI/CD)
+# Manual Dockerfile for local testing only
+# Production deployment uses Google Cloud Buildpacks via `gcloud run deploy --source`
+# which automatically detects Node.js, runs `gcp-build`, and creates an optimized container.
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./

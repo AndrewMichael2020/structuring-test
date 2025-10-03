@@ -69,8 +69,9 @@ npm run preview
 
 ## Deploy
 
-- GitHub Actions CD workflow: `.github/workflows/cd.yml` (Cloud Run deploy via OIDC)
+- GitHub Actions CD workflow: `.github/workflows/cd.yml` (Cloud Run deploy via OIDC using Google Cloud Buildpacks)
 - Terraform infra: `../infra/` provisions Artifact Registry, Cloud Run, and GCS bucket
+- Local Docker testing: Use `Dockerfile.manual` (production uses buildpacks, not Dockerfile)
 
 At minimum, set GitHub secrets:
 - `GCP_WORKLOAD_IDP`

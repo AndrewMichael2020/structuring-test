@@ -21,10 +21,12 @@ This guide covers local dev, containerization, CI/CD via GitHub Actions (OIDC), 
 Build and run locally with Docker to mimic Cloud Run:
 
 ```bash
-docker build -t REGION-docker.pkg.dev/PROJECT/web-app/accident-reports-frontend:local ./app
+docker build -f app/Dockerfile.manual -t REGION-docker.pkg.dev/PROJECT/web-app/accident-reports-frontend:local ./app
 docker run -e PORT=8080 -e NODE_ENV=production -e GCS_BUCKET=accident-reports-artifacts -p 8080:8080 REGION-docker.pkg.dev/PROJECT/web-app/accident-reports-frontend:local
 # open http://localhost:8080/healthz
 ```
+
+**Note:** The production deployment uses Google Cloud Buildpacks (via `gcloud run deploy --source`), which automatically detects Node.js, runs `gcp-build`, and creates an optimized container. The `Dockerfile.manual` is provided for local testing only.
 
 ## GitHub Actions (CI/CD)
 - Workflows:
