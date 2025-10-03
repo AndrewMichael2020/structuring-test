@@ -194,14 +194,70 @@ def cluster_deterministic(records: List[dict]) -> List[dict]:
     return clusters
 
 
+def post_filter_clusters(records: List[dict], clusters: List[dict]) -> List[dict]:
+    """Sanity-check LLM clusters and split any cluster that contains records with
+    clearly different mountain names or accident dates.
+
+    This is a lightweight, deterministic safety net to avoid over-merging when
+    the LLM is too permissive. Splitting is done by the same deterministic
+    keying used in `cluster_deterministic` for stability.
+    """
+    out: List[dict] = []
+    cid = 0
+    for c in clusters:
+        idxs = c.get('indices', [])
+        if not idxs:
+            continue
+        # collect normalized mountains and dates
+        mountains = set(((records[i].get('mountain_name') or '').strip().lower()) for i in idxs)
+        dates = set(((records[i].get('accident_date') or records[i].get('article_date_published') or '').strip()) for i in idxs)
+
+        # ignore empty values when considering conflicts
+        mt_nonempty = [m for m in mountains if m]
+        date_nonempty = [d for d in dates if d]
+
+        need_split = False
+        if len(mt_nonempty) > 1:
+            need_split = True
+        if len(date_nonempty) > 1:
+            need_split = True
+
+        if not need_split:
+            out.append({'cluster_id': cid, 'indices': idxs})
+            cid += 1
+            continue
+
+        # split cluster deterministically by (mountain|date) or fallback to source_url/title
+        groups: Dict[str, List[int]] = {}
+        for i in idxs:
+            r = records[i]
+            date = (r.get('accident_date') or r.get('article_date_published') or '').strip()
+            mt = (r.get('mountain_name') or '').strip().lower()
+            if date and mt:
+                key = f"{mt}|{date}"
+            else:
+                seed = (r.get('source_url') or r.get('article_title') or str(r.get('__file_path')))
+                key = hashlib.md5(seed.encode('utf-8')).hexdigest()[:16]
+            groups.setdefault(key, []).append(i)
+
+        for _, idxs2 in groups.items():
+            out.append({'cluster_id': cid, 'indices': idxs2})
+            cid += 1
+
+    return out
+
+
 def assign_event_ids(records: List[dict], clusters: List[dict]) -> None:
     for c in clusters:
         if not c.get('indices'):
             continue
         first = records[c['indices'][0]]
-        seed = (first.get('mountain_name') or '').strip() + '|' + (first.get('accident_date') or first.get('article_date_published') or '').strip()
-        if not seed.strip():
-            # fallback seeds
+        mt = (first.get('mountain_name') or '').strip()
+        date = (first.get('accident_date') or first.get('article_date_published') or '').strip()
+        if mt or date:
+            seed = f"{mt}|{date}"
+        else:
+            # fallback seeds when both mountain and date are empty
             seed = (first.get('article_title') or first.get('source_url') or first.get('__file_path') or '')
         event_id = hashlib.md5(seed.encode('utf-8')).hexdigest()[:12]
         for idx in c['indices']:

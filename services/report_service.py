@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
 import os
@@ -24,7 +26,7 @@ from services.report_prompts import (
     VERIFIER_SYSTEM,
     VERIFIER_USER_TMPL,
 )
-from services.report_render import front_matter, json_ld, as_markdown_timeline, as_table, as_bullets
+from services.report_render import front_matter, as_markdown_timeline, as_table, as_bullets
 from token_tracker import add_usage, summary as token_summary
 
 
@@ -95,6 +97,131 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
         return None
     event = _load_event(eid)
 
+    # ------------------------- Deterministic helpers ------------------------- #
+    def _parse_date(s: str) -> datetime | None:
+        for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d %b %Y', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+            try:
+                return datetime.strptime(s[:19], fmt)
+            except Exception:
+                continue
+        return None
+
+    pub_dt: datetime | None = None
+    pub_raw = event.get('article_date_published') or event.get('article_date') or ''
+    if pub_raw:
+        pub_dt = _parse_date(pub_raw)
+
+    WEEKDAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    MONTHS = {m.lower(): i for i,m in enumerate(['January','February','March','April','May','June','July','August','September','October','November','December'], start=1)}
+
+    article_text = event.get('article_text') or event.get('scraped_full_text') or ''
+
+    def infer_event_date() -> str:
+        # Priority 1: explicit upstream accident_date
+        acc = (event.get('accident_date') or '').strip()
+        if acc:
+            return acc
+        text = article_text
+        lowered = text.lower()
+        # Priority 2: weekday mention + publication date → choose most recent past weekday
+        if pub_dt:
+            for wd in WEEKDAYS:
+                if re.search(rf"\b{wd}\b", lowered):
+                    # go back up to 7 days to find that weekday
+                    target = pub_dt
+                    for _ in range(7):
+                        if target.strftime('%A').lower() == wd:
+                            return target.strftime('%Y-%m-%d') + ' (approx, inferred from weekday reference)'
+                        target = target - timedelta(days=1)
+                    break
+        # Priority 3: Month + Day + (optional Year)
+        # Capture patterns like 'July 23, 2022' or 'July 23' or '23 July 2022'
+        md_pattern = re.compile(r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-3]?\d)(?:,?\s+(\d{4}))?', re.IGNORECASE)
+        m = md_pattern.search(text)
+        if m:
+            month_name, day, year = m.group(1), m.group(2), m.group(3)
+            if year:
+                return f"{year}-{int(MONTHS[month_name.lower()]):02d}-{int(day):02d}"
+            # no year: estimate relative to publication date if available
+            if pub_dt:
+                y = pub_dt.year
+                candidate = datetime(y, MONTHS[month_name.lower()], int(day))
+                # if candidate is > pub_dt (future), assume previous year
+                if candidate > pub_dt:
+                    candidate = datetime(y - 1, MONTHS[month_name.lower()], int(day))
+                if (pub_dt - candidate).days <= 366:
+                    return candidate.strftime('%Y-%m-%d') + ' (year inferred)'
+            return f"Specific date known (month/day: {month_name} {day}, year unknown)"
+        # Priority 4: Month + Year (no specific day)
+        my_pattern = re.compile(r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', re.IGNORECASE)
+        my = my_pattern.search(text)
+        if my:
+            month_name, year = my.group(1), my.group(2)
+            return f"Specific date known (month/year: {month_name} {year})"
+        # Priority 5: Month only
+        mo_pattern = re.compile(r'(January|February|March|April|May|June|July|August|September|October|November|December)', re.IGNORECASE)
+        mo = mo_pattern.search(text)
+        if mo and pub_dt:
+            month_name = mo.group(1)
+            # assume within last 12 months
+            y = pub_dt.year
+            candidate = datetime(y, MONTHS[month_name.lower()], 1)
+            if candidate > pub_dt:
+                candidate = datetime(y - 1, MONTHS[month_name.lower()], 1)
+            return candidate.strftime('%Y-%m') + ' (month inferred)'
+        return 'Specific date unknown'
+
+    inferred_date = infer_event_date()
+
+    def infer_region() -> str:
+        for k in ('mountain_name','peak','area_name','location','region'):
+            v = event.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ''
+
+    # Extract web links (sources)
+    def extract_links() -> list[str]:
+        links = set()
+        # upstream list
+        for key in ('source_urls','source_url','sources'):
+            v = event.get(key)
+            if isinstance(v, list):
+                for s in v:
+                    if isinstance(s, str) and s.startswith('http'):
+                        links.add(s.strip())
+            elif isinstance(v, str) and v.startswith('http'):
+                links.add(v.strip())
+        # fallback: regex scan article text
+        for m in re.findall(r'https?://[^\s)]+', article_text):
+            links.add(m.rstrip(').,'))
+        return sorted(links)
+
+    web_links = extract_links()
+
+    # Short title generation via lightweight LLM (planner model) for speed
+    def generate_short_title() -> str:
+        try:
+            prompt = (
+                "Produce a concise, down-to-earth incident title (<=8 words, no date) describing the event. "
+                "Avoid sensationalism; include key location or activity if possible. Return ONLY the title text.\n\n"
+                f"EVENT JSON:\n{json.dumps(event, ensure_ascii=False)}"
+            )
+            resp = _llm_text(REPORT_PLANNER_MODEL, "You write concise neutral titles.", prompt)
+            title = resp.strip().split('\n')[0].strip('# ').strip()
+            # basic cleanup
+            if len(title) > 120:
+                title = title[:117] + '...'
+            return title or 'Mountaineering Incident'
+        except Exception:
+            pass
+        # deterministic fallback
+        loc = infer_region() or 'Mountaineering'
+        acc_type = event.get('accident_type') or 'Incident'
+        return f"{loc} {acc_type}".strip()
+
+    short_title = generate_short_title()
+
     # Planner (mini)
     outline = _llm_json(
         REPORT_PLANNER_MODEL,
@@ -142,17 +269,27 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
                 parts.append(str(v))
         title_seed = ', '.join(parts) if parts else 'Unknown'
     meta = {
-        'title': f"{title_seed} — {event.get('accident_type','Incident')} ({event.get('accident_date','')})",
-        'description': event.get('accident_summary_text') or '',
-        'date': event.get('accident_date') or '',
-        'region': event.get('region') or '',
+        'title': short_title,
+        'date_of_event': inferred_date,
+        'region': infer_region(),
         'audience': audience,
         'event_id': event.get('event_id') or eid,
     }
     header = front_matter(meta)
-    ld = json_ld(event)
-    # omit appendix section per requirement; issues can be used for CI/linting instead
-    final_md = header + ld + "\n" + draft_md
+    final_md = header + "\n" + draft_md
+
+    # Insert web links section if not already present
+    if '## Web Links to Sources' not in final_md:
+        if '## Sources' in final_md and web_links:
+            parts = final_md.split('## Sources')
+            if len(parts) >= 2:
+                before, after = parts[0], '## Sources' + parts[1]
+                links_md = '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
+                final_md = before + after + links_md
+            else:
+                final_md += '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
+        elif web_links:
+            final_md += '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
 
     if dry_run:
         return None

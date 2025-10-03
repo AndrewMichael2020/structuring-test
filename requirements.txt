@@ -60,4 +60,7 @@ google-auth-oauthlib
 # Post-json-creation commands only:
 # python main.py --assign-event-ids --merge-events --generate-reports --cache-clear
 
+# Or just create reports: python services/report_service.py
+# ("--event-id 2bc55...ea6b1" is option)
+
 # Test-deploy from workspace: gcloud run deploy accident-reports-frontend --source ./app --region us-west1 --platform managed --allow-unauthenticated --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production,OPENAI_API_KEY=${OPENAI_API_KEY} --quiet

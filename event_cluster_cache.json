@@ -15,7 +15,8 @@
     {
       "cluster_id": 2,
       "indices": [
-        2
+        2,
+        18
       ]
     },
     {
@@ -45,7 +46,8 @@
     {
       "cluster_id": 7,
       "indices": [
-        7
+        7,
+        11
       ]
     },
     {
@@ -63,59 +65,32 @@
     {
       "cluster_id": 10,
       "indices": [
-        10
+        10,
+        15,
+        16,
+        17
       ]
     },
     {
       "cluster_id": 11,
       "indices": [
-        11
+        12
       ]
     },
     {
       "cluster_id": 12,
       "indices": [
-        12
+        13
       ]
     },
     {
       "cluster_id": 13,
       "indices": [
-        13
-      ]
-    },
-    {
-      "cluster_id": 14,
-      "indices": [
         14
       ]
     },
     {
-      "cluster_id": 15,
-      "indices": [
-        15
-      ]
-    },
-    {
-      "cluster_id": 16,
-      "indices": [
-        16
-      ]
-    },
-    {
-      "cluster_id": 17,
-      "indices": [
-        17
-      ]
-    },
-    {
-      "cluster_id": 18,
-      "indices": [
-        18
-      ]
-    },
-    {
-      "cluster_id": 19,
+      "cluster_id": 14,
       "indices": [
         19
       ]
