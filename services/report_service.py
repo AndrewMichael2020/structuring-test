@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Dict
+import os
 
 import sys
 ROOT = Path(__file__).resolve().parents[1]
@@ -190,3 +191,18 @@ if __name__ == '__main__':
             print(f"[report] wrote {p}")
     print(f"[models] planner={REPORT_PLANNER_MODEL}, writer={REPORT_WRITER_MODEL}, verifier={REPORT_VERIFIER_MODEL}, tier={SERVICE_TIER}")
     print(f"✅ Reports: {wrote}/{len(target_ids)} written{' (dry-run)' if args.dry_run else ''}.")
+
+    # If we actually wrote reports (not dry-run), attempt to build & upload the
+    # canonical `reports/list.json` to the configured GCS bucket. This is
+    # best-effort and intentionally non-fatal to avoid blocking report
+    # generation on upload issues.
+    try:
+        # Only attempt upload when reports were actually written and a bucket
+        # is configured. This avoids running the builder when nothing changed.
+        if wrote > 0 and not args.dry_run and os.environ.get('GCS_BUCKET'):
+            import subprocess
+            builder = Path(ROOT) / 'scripts' / 'build_reports_list.py'
+            print(f"Building and uploading reports/list.json via {builder}")
+            subprocess.check_call([sys.executable, str(builder), '--upload'])
+    except Exception as e:
+        print(f"[warn] failed to upload reports/list.json: {e}")

@@ -34,6 +34,11 @@ google-auth-oauthlib
 
 # source venv/bin/activate
 
+# python3 -m playwright install
+# python3 -m playwright install-deps
+# python3 -m playwright install
+# python3 -m playwright codegen https://example.com
+
 # python main.py "..."
 
 # python - <<'PY'
@@ -52,6 +57,7 @@ google-auth-oauthlib
 # Run the full batch pipeline from urls.txt:
 # python main.py --urls-file urls.txt --batch-size 7 --assign-event-ids --merge-events --generate-reports
 
+# Post-json-creation commands only:
 # python main.py --assign-event-ids --merge-events --generate-reports --cache-clear
 
 # Test-deploy from workspace: gcloud run deploy accident-reports-frontend --source ./app --region us-west1 --platform managed --allow-unauthenticated --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production,OPENAI_API_KEY=${OPENAI_API_KEY} --quiet
