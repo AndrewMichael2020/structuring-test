@@ -34,6 +34,7 @@ Purpose: Help an AI agent contribute productively to this repo (mountain acciden
 
 ### Environment Variables (Frequent)
 OPENAI_API_KEY, MAX_OPENAI_CALLS, OPENAI_CALLS_PATH
+Security note: Never commit a `.env` file with secrets. Use `.env.example` for local templates and put production/CI keys into repository or organization secrets (e.g., GitHub Secrets). If a key is accidentally committed, rotate it immediately.
 SERVICE_TIER (standard|flex|batch|priority) — influences logging / planning only
 TIMEZONE, GAZETTEER_ENABLED
 PLAYWRIGHT_HEADLESS, PLAYWRIGHT_STEALTH, PLAYWRIGHT_NAV_TIMEOUT_MS (capped at 25s)

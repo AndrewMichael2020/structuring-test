@@ -22,6 +22,8 @@ This project aims to collect and structure information about underreported, unde
 
 - Python 3.10+ recommended. Install dependencies from `requirements.txt`.
 - Optional: set `OPENAI_API_KEY` to enable LLM extraction; otherwise minimal artifacts are still produced.
+ 
+Security note: Do not commit a `.env` file with secrets into the repository. Use `.env.example` for local development and store real keys in your GitHub repository secrets or environment for CI/deployments.
 - Run a single URL in full mode:
   - `python main.py "https://example.com/article" --mode all`
 - Run batched LLM extraction from a file (one-per-line or comma-separated; `#` comments allowed):

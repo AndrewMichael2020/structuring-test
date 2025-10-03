@@ -24,14 +24,51 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Build and Deploy to Cloud Run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: >
+          # Pass required env vars into the Cloud Run service. Secrets are provided
+          # by GitHub Actions and are masked in logs.
           gcloud run deploy accident-reports-frontend
           --source ./app
           --region us-west1 --platform managed --allow-unauthenticated
-          --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production
+          --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production,OPENAI_API_KEY=${OPENAI_API_KEY}
           --quiet
 
+      - name: Wait for revision readiness
+        run: |
+          SERVICE=accident-reports-frontend
+          REGION=us-west1
+          MAX_WAIT=120
+          SLEEP=3
+          echo "Waiting up to ${MAX_WAIT}s for latest created revision to become ready"
+          latest_created=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.latestCreatedRevisionName)')
+          echo "latest_created=${latest_created}"
+          start=$(date +%s)
+          while true; do
+            latest_ready=$(gcloud run services describe $SERVICE --region $REGION --format='value(status.latestReadyRevisionName)')
+            if [[ -n "$latest_ready" && "$latest_ready" == "$latest_created" ]]; then
+              echo "Revision ready: $latest_ready"
+              break
+            fi
+            now=$(date +%s)
+            elapsed=$((now-start))
+            if (( elapsed > MAX_WAIT )); then
+              echo "Timed out waiting for revision readiness after ${MAX_WAIT}s"
+              echo "Service status:"
+              gcloud run services describe $SERVICE --region $REGION --format='yaml(status)'
+              break
+            fi
+            echo "Waiting... elapsed=${elapsed}s"
+            sleep $SLEEP
+          done
+
       - name: Smoke test
+        env:
+          SMOKE_ATTEMPTS: 6
+          SMOKE_TIMEOUT: 10
+          SMOKE_SLEEP_BASE: 2
+          DEBUG_SMOKE: 1
         run: |
           URL=$(gcloud run services describe accident-reports-frontend --region us-west1 --format='value(status.url)')
-          scripts/smoke.sh "$URL"
+          bash scripts/smoke.sh "$URL"
