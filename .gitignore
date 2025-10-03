@@ -1,5 +1,36 @@
 # Python
 __pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/public/api/
+frontend/public/reports/
+
+# Local data & artifacts
+artifacts/
+events/enriched/
+events/fused/
+events/reports/
+
+# Env & secrets
+.env
+.env.*
+config.local.json
+
+# Logs
+logs/
+*.log
+
+# OS/Editor
+.DS_Store
+.vscode/
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd

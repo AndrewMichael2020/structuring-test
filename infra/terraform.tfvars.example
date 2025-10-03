@@ -1,0 +1,4 @@
+project_id   = "gcp-agents-tests"
+region       = "us-west1"
+service_name = "accident-reports-frontend"
+bucket_name  = "accident-reports-artifacts"
