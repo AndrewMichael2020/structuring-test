@@ -44,6 +44,22 @@ resource "google_service_account" "run_sa" {
   display_name = "Cloud Run SA for accident reports"
 }
 
+resource "google_project_iam_member" "run_sa_roles" {
+  for_each = toset([
+    "roles/run.admin",
+    "roles/artifactregistry.admin", # Allows creating the repo on first deploy from source
+    "roles/iam.serviceAccountUser",
+    "roles/cloudbuild.builds.editor",
+    "roles/storage.objectAdmin",
+    "roles/serviceusage.serviceUsageConsumer",
+    "roles/cloudbuild.serviceAgent",
+    "roles/logging.viewer" # Allows viewing build logs
+  ])
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.run_sa.email}"
+}
+
 resource "google_cloud_run_v2_service" "frontend" {
   name     = var.service_name
   location = var.region
@@ -71,7 +87,10 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
   }
   ingress = "INGRESS_TRAFFIC_ALL"
-  depends_on = [google_project_service.apis]
+  depends_on = [
+    google_project_service.apis,
+    google_project_iam_member.run_sa_roles # Ensure roles are granted before service creation
+  ]
 
   # Ignore changes to the image, as it will be updated by the CD pipeline.
   lifecycle {
