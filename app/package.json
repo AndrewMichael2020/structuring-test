@@ -8,8 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "gcp-build": "vite build",
-    "preview": "vite preview",
-    "start": "NODE_ENV=production node server/index.cjs",
+    "preview": "vite preview",    "start": "NODE_ENV=production node server/index.js",
     "lint": "eslint . --ext .js,.jsx",
     "test": "jest --passWithNoTests"
   },

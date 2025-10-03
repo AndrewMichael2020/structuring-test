@@ -1,8 +1,8 @@
 /** @jest-environment node */
-const request = require('supertest');
-const nock = require('nock');
+import request from 'supertest';
+import nock from 'nock';
 process.env.GCS_BUCKET = process.env.GCS_BUCKET || 'test-bucket';
-const app = require('./index.cjs');
+import app from './index.js';
 
 const BUCKET = process.env.GCS_BUCKET || 'test-bucket';
 
