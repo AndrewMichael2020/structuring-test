@@ -50,6 +50,10 @@ Note on `reports/list.json`:
 
 - The frontend expects a canonical manifest at `gs://<GCS_BUCKET>/reports/list.json` that lists available reports. If this file is missing, the server will attempt a public bucket listing fallback, but it's preferable to generate and upload a manifest.
 - The repository includes `scripts/build_reports_list.py` which scans `events/reports/*.md` and writes a `list.json` (optionally uploading it to your bucket when `GCS_BUCKET` is set). Typically this should be created after report-generation in your pipeline, e.g., as a post-step in the report generation job or as part of `store_artifacts` / upload artifacts flow.
+- Accepted shapes:
+	- Legacy (array): `[{"id":"<event_id>","title":"...","region":"...","date":"YYYY-MM-DD"}, ...]`
+	- Canonical (object): `{ "reports": [ {"id": "<event_id>", ...}, ... ], "generated_at": "<iso>", "version": 1 }`
+	- The frontend now gracefully handles either; prefer the canonical object for future metadata expansion.
 
 - `DEV_FAKE` — when `1`, `/api/reports/list` returns a local mock list
 - `LOCAL_REPORTS_DIR` — directory of local `.md` files for `/api/reports/:id`

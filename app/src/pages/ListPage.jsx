@@ -22,7 +22,17 @@ export default function ListPage() {
         const r = await fetch('/api/reports/list');
         if (!r.ok) throw new Error('Failed to load list');
         const data = await r.json();
-        setReports(Array.isArray(data) ? data : []);
+        // Accept either legacy shape: Array<ReportMeta>
+        // or new manifest wrapper: { reports: Array<ReportMeta>, generated_at?, version? }
+        let list = [];
+        if (Array.isArray(data)) {
+          list = data;
+        } else if (data && Array.isArray(data.reports)) {
+          list = data.reports;
+        } else {
+          console.warn('Unexpected list payload shape for /api/reports/list', data);
+        }
+        setReports(list);
       } catch (e) {
         setError(String(e));
       } finally {
