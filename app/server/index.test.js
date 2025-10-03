@@ -1,7 +1,6 @@
 /** @jest-environment node */
 import request from 'supertest';
 import nock from 'nock';
-process.env.GCS_BUCKET = process.env.GCS_BUCKET || 'test-bucket';
 import app from './index.js';
 
 const BUCKET = process.env.GCS_BUCKET || 'test-bucket';

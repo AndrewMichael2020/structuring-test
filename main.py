@@ -44,6 +44,19 @@ def ts_print(*args, level: str = 'info', **kwargs):
     else:
         logger.info(msg, **kwargs)
 
+def _yn(prompt: str, default: bool = True) -> bool:
+    """Helper for interactive yes/no prompts. Skips in test environments."""
+    # In a test environment, pytest captures stdin, causing errors.
+    # Default to the 'default' value without prompting.
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return default
+
+    d = 'Y/n' if default else 'y/N'
+    r = input(f"{prompt} ({d}): ").strip().lower()
+    if not r:
+        return default
+    return r in ('y', 'yes')
+
 if __name__ == "__main__":
     # Configure logging via helper (only sets defaults if not already configured).
     configure_logging()
@@ -88,13 +101,6 @@ if __name__ == "__main__":
         if args.assign_event_ids or args.merge_events or args.generate_reports:
             urls = []
         else:
-            def _yn(prompt: str, default: bool = True) -> bool:
-                d = 'Y/n' if default else 'y/N'
-                r = input(f"{prompt} ({d}): ").strip().lower()
-                if not r:
-                    return default
-                return r in ('y','yes')
-
             print('\nNo URLs provided. Choose an action:')
             print('  1) Process a single URL now (interactive)')
             print('  2) Run batched extraction from a URLs file')
@@ -202,13 +208,6 @@ if __name__ == "__main__":
             ts_print(' -', p)
         # After batched extraction, propose the service pipeline unless flags were provided.
         if not (args.assign_event_ids or args.merge_events or args.generate_reports):
-            def _yn(prompt: str, default: bool = True) -> bool:
-                d = 'Y/n' if default else 'y/N'
-                r = input(f"{prompt} ({d}): ").strip().lower()
-                if not r:
-                    return default
-                return r in ('y','yes')
-
             print('\nBatched artifact processing complete')
             if _yn('Run the service pipeline now (assign IDs, merge, generate reports)?', default=True):
                 dry = _yn('Dry run (compute only, do not write outputs)?', default=True)
@@ -294,14 +293,7 @@ if __name__ == "__main__":
         # After artifact-level work, if the user didn't already request service flags,
         # propose next steps (assign IDs, merge, generate reports) interactively.
         # This helps the CLI drive the full pipeline without requiring flags up-front.
-        if not (args.assign_event_ids or args.merge_events or args.generate_reports):
-            def _yn(prompt: str, default: bool = True) -> bool:
-                d = 'Y/n' if default else 'y/N'
-                r = input(f"{prompt} ({d}): ").strip().lower()
-                if not r:
-                    return default
-                return r in ('y','yes')
-
+        if not (args.assign_event_ids or args.merge_events or args.generate_reports) and not urls:
             print('\nArtifact processing complete for:', url)
             print('Proposed next steps: assign event IDs, merge/fuse per-event, and generate reports.')
             if _yn('Run the service pipeline now (assign IDs, merge, generate reports)?', default=True):

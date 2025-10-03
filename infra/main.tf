@@ -97,12 +97,21 @@ resource "google_cloud_run_v2_service" "frontend" {
   ingress = "INGRESS_TRAFFIC_ALL"
   depends_on = [
     google_project_service.apis,
-    google_project_iam_member.run_sa_roles # Ensure roles are granted before service creation
+    google_project_iam_member.run_sa_service_account_user # Ensure roles are granted before service creation
   ]
 
   # Ignore changes to the image, as it will be updated by the CD pipeline.
   lifecycle {
     ignore_changes = [template[0].containers[0].image]
+  }
+}
+
+data "google_iam_policy" "run_sa_self_policy" {
+  binding {
+    role = "roles/run.serviceAgent"
+    members = [
+      "serviceAccount:${google_service_account.run_sa.email}"
+    ]
   }
 }
 
