@@ -15,6 +15,7 @@ pytest
 # LLM-based enrichment
 openai
 readability-lxml
+lxml
 
 # Load .env files for local development (used by accident_info.py to read OPENAI_API_KEY etc.)
 python-dotenv
@@ -24,6 +25,10 @@ google-api-python-client
 google-auth
 google-auth-httplib2
 google-auth-oauthlib
+
+# Frontend (Node.js) dependencies noted for completeness
+# gray-matter (for parsing markdown front-matter)
+# sanitize-html (for security)
 
 # pip install -r requirements.txt
 

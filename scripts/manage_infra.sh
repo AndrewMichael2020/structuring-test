@@ -57,14 +57,41 @@ INFRA_DIR="${SCRIPT_DIR}/../infra"
 
 # --- Helper Functions ---
 
+check_vpc_sc() {
+    echo "▶️ Checking for VPC Service Controls on Cloud Build API..."
+    # This command will fail if the project is not part of an organization.
+    local org_id
+    org_id=$(gcloud projects get-ancestors "${PROJECT_ID}" --format="get(id)" | grep '^organizations/' | sed 's/organizations\///')
+
+    if [[ -z "$org_id" ]]; then
+        echo "   ✅ Project is not part of a GCP Organization. Skipping VPC-SC check."
+    else
+        echo "   Project is in Organization ID: ${org_id}. Checking for perimeters..."
+        local perimeter_name
+        # This command requires the accesscontextmanager.googleapis.com API to be enabled.
+        perimeter_name=$(gcloud access-context-manager perimeters list --organization="$org_id" \
+            --format="value(name)" --filter="spec.resources:'projects/${PROJECT_NUMBER}' AND spec.restrictedServices:'cloudbuild.googleapis.com'" 2>/dev/null)
+
+        if [[ -n "$perimeter_name" ]]; then
+            echo "   ⚠️  Warning: Project ${PROJECT_ID} appears to be in a VPC-SC perimeter ('${perimeter_name}') that restricts the Cloud Build API."
+            echo "      The default Cloud Build log streaming may fail. If your build step fails with a log streaming error,"
+            echo "      you may need to configure a private worker pool and a custom logging bucket inside your perimeter."
+            echo "      See: https://cloud.google.com/build/docs/securing-builds/store-manage-build-logs"
+        else
+            echo "   ✅ No restrictive VPC-SC perimeter found for Cloud Build API."
+        fi
+    fi
+}
+
 configure_gcp() {
     echo "▶️ Configuring GCP Project: ${PROJECT_ID}"
     gcloud config set project "$PROJECT_ID" >/dev/null
     PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 
-    echo "▶️ Enabling required APIs..."
+    echo "▶️ Enabling required APIs (iam, sts, run, artifactregistry, cloudbuild, serviceusage, accesscontextmanager)..."
     gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com \
       run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com serviceusage.googleapis.com \
+      accesscontextmanager.googleapis.com \
       --quiet
 }
 
@@ -83,6 +110,7 @@ manage_terraform() {
 }
 
 setup_all() {
+    # Configure project and enable APIs first.
     configure_gcp
 
     echo "▶️ Creating Workload Identity Pool: ${POOL_ID} (idempotent)"
@@ -136,6 +164,7 @@ setup_all() {
       "roles/storage.objectAdmin"
       "roles/serviceusage.serviceUsageConsumer"
       "roles/cloudbuild.serviceAgent" # Grants permissions to access Cloud Build GCS buckets
+      "roles/logging.viewer"          # Allows viewing logs, required for streaming build logs
     )
     for role in "${ROLES[@]}"; do
       gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="$role" --quiet
@@ -145,6 +174,9 @@ setup_all() {
     PRINCIPAL_SET="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_REPO}"
     gcloud iam service-accounts add-iam-policy-binding "$TERRAFORM_SA_EMAIL" --role="roles/iam.workloadIdentityUser" --member="$PRINCIPAL_SET" --quiet
     gcloud iam service-accounts add-iam-policy-binding "$CLOUDRUN_SA_EMAIL" --role="roles/iam.workloadIdentityUser" --member="$PRINCIPAL_SET" --quiet
+
+    # Check for VPC-SC after APIs are enabled and before applying Terraform.
+    check_vpc_sc
 
     echo "▶️ Applying Terraform configuration..."
     manage_terraform "apply"

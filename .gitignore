@@ -1,52 +1,9 @@
 # Python
 __pycache__/
-.pytest_cache/
-.venv/
-*.pyc
-
-# Node / Frontend (legacy paths)
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/public/api/
-frontend/public/reports/
-
-# Node / Frontend (current app/ paths)
-app/node_modules/
-app/dist/
-app/build/
-app/.vite/
-app/.cache/
-app/coverage/
-app/npm-debug.log*
-app/yarn-*.log
-
-# Local data & artifacts
-artifacts/
-events/enriched/
-events/fused/
-events/reports/
-
-# Env & secrets
-.env
-.env.*
-config.local.json
-.openai_calls.json
-
-# Logs
-logs/
-*.log
-
-# OS/Editor
-.DS_Store
-.vscode/
-# Python
-__pycache__/
 *__pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.sqlite3
 
 # Virtual environments
 .venv/
@@ -54,18 +11,20 @@ env/
 venv/
 myenv/
 
-# Playwright browser binaries
-playwright/.local-browsers/
-
-# Artifacts (captions + images)
+# Local data, artifacts, and reports
 artifacts/
-
-# Events, enriched/fused reports and generated frontend report outputs
+artifacts.db
 events/
 events/**
 
-# Frontend / Node
+# Frontend / Node (current app/ and legacy paths)
 node_modules/
+app/node_modules/
+app/dist/
+app/build/
+app/.vite/
+app/.cache/
+app/coverage/
 frontend/node_modules/
 frontend/dist/
 frontend/build/
@@ -73,26 +32,28 @@ frontend/.vite/
 frontend/.cache/
 .vite/
 
-# Logs / temp
+# Logs and temporary files
 *.log
 *.tmp
+logs/
+nohup.out
+app/npm-debug.log*
+app/yarn-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-nohup.out
 
-# Tailwind / PostCSS / build caches
+# Build caches (Python, JS, etc.)
 .cache/
 .parcel-cache/
-
-# Test / coverage / lint caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 coverage/
+playwright/.local-browsers/
 
-# Editor / OS
+# Editor & OS specific
 *.DS_Store
 .DS_Store
 .vscode/
@@ -100,18 +61,19 @@ coverage/
 *.sublime-workspace
 *.sublime-project
 
-# Local env / credentials
+# Local secrets and configuration
 .env
 .env.local
 .env.*.local
 .credentials/
 .google-credentials.json
+config.local.json
+.openai_calls.json
 
-# Misc
-*.db
-artifacts.db
-.cache/
-tmp/
+# Service caches
+event_cluster_cache.json
+event_merge_cache.json
+event_fusion_cache.json
 ```// filepath: /workspaces/structuring-test/.gitignore
 # Python
 __pycache__/
