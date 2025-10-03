@@ -48,6 +48,7 @@ PROVIDER_ID=${PROVIDER_ID:-github-actions}
 TERRAFORM_SA_ID=${TERRAFORM_SA_ID:-terraform-applier}
 CLOUDRUN_SA_ID=${CLOUDRUN_SA_ID:-github-cloudrun-deployer}
 TF_CUSTOM_ROLE_ID="terraform_applier"
+TF_STATE_BUCKET_NAME="${PROJECT_ID}-tf-state"
 
 TERRAFORM_SA_EMAIL="${TERRAFORM_SA_ID}@${PROJECT_ID}.iam.gserviceaccount.com"
 CLOUDRUN_SA_EMAIL="${CLOUDRUN_SA_ID}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -100,7 +101,11 @@ manage_terraform() {
     echo "▶️ Running 'terraform ${tf_action}' in ${INFRA_DIR}..."
     (
         cd "$INFRA_DIR"
-        terraform init -upgrade
+        # Initialize with the GCS backend configuration.
+        terraform init -upgrade \
+            -backend-config="bucket=${TF_STATE_BUCKET_NAME}" \
+            -backend-config="prefix=terraform/state"
+
         terraform "${tf_action}" -auto-approve \
             -var="project_id=${PROJECT_ID}" \
             -var="region=us-west1" \
@@ -112,6 +117,10 @@ manage_terraform() {
 setup_all() {
     # Configure project and enable APIs first.
     configure_gcp
+
+    echo "▶️ Creating GCS bucket for Terraform state: ${TF_STATE_BUCKET_NAME} (idempotent)"
+    # Use gsutil mb with -b on to enable uniform bucket-level access.
+    gsutil ls "gs://${TF_STATE_BUCKET_NAME}" >/dev/null 2>&1 || gsutil mb -p "${PROJECT_ID}" -l "${REGION:-us-west1}" -b on "gs://${TF_STATE_BUCKET_NAME}"
 
     echo "▶️ Creating Workload Identity Pool: ${POOL_ID} (idempotent)"
     gcloud iam workload-identity-pools describe "$POOL_ID" --location=global >/dev/null 2>&1 || \

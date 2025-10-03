@@ -17,7 +17,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
           service_account: ${{ secrets.GCP_TERRAFORM_SA }}
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform -chdir=infra init
+      - name: Terraform Init
+        run: |
+          terraform -chdir=infra init \
+            -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tf-state" \
+            -backend-config="prefix=terraform/state"
       - run: terraform -chdir=infra plan -input=false
   apply:
     needs: plan
@@ -31,4 +35,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
           service_account: ${{ secrets.GCP_TERRAFORM_SA }}
       - uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init
+        run: |
+          terraform -chdir=infra init -upgrade \
+            -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tf-state" \
+            -backend-config="prefix=terraform/state"
       - run: terraform -chdir=infra apply -auto-approve -input=false

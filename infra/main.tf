@@ -1,5 +1,7 @@
 terraform {
-  backend "local" {}
+  # The GCS backend will be configured dynamically by the manage_infra.sh script.
+  # This allows the bucket to be created before Terraform initializes the backend.
+  backend "gcs" {}
 }
 
 resource "google_project_service" "apis" {
