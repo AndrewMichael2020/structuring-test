@@ -339,12 +339,35 @@ def fuse_event(eid: str, enriched: dict, recs: List[dict], dry_run: bool, fuse_c
 
 def _deterministic_fuse(items: List[dict]) -> dict:
     out: dict = {}
+    # Sort by confidence score, descending, to prioritize better sources
+    items.sort(key=lambda r: float(r.get('extraction_confidence_score', 0) or 0), reverse=True)
+
     def keep_scalar(k, vals):
-        # Prefer non-empty, then highest numeric if looks like confidence
-        for v in vals:
-            if v not in (None, "", [], {}):
-                return v
-        return vals[0] if vals else None
+        # Intelligent scalar selection based on key
+        non_empty_vals = [v for v in vals if v not in (None, "", [], {})]
+        if not non_empty_vals:
+            return vals[0] if vals else None
+
+        if k in ['accident_summary_text', 'timeline_text']:
+            # Prefer the longest, most descriptive text
+            return max(non_empty_vals, key=len)
+        if k == 'title':
+            # Prefer a more descriptive title over a generic one
+            return sorted(non_empty_vals, key=lambda t: (isinstance(t, str) and 'None' in t, -len(str(t))))[0]
+        if k == 'accident_date':
+            # Use the earliest date as the canonical one, but keep others
+            try:
+                # Filter out invalid date strings before sorting
+                valid_dates = sorted([v for v in non_empty_vals if isinstance(v, str) and v.startswith('20')])
+                return valid_dates[0] if valid_dates else non_empty_vals[0]
+            except Exception:
+                return non_empty_vals[0]
+        if k == 'extraction_confidence_score':
+            # Use the highest confidence score
+            return max(non_empty_vals)
+        # Default: return the first non-empty value from the highest-confidence source
+        return non_empty_vals[0]
+
     def list_union(vals):
         res = []
         seen = set()
@@ -361,7 +384,10 @@ def _deterministic_fuse(items: List[dict]) -> dict:
     all_keys = set()
     for it in items:
         all_keys.update(it.keys())
-    for k in all_keys:
+    # Ensure a consistent field order in the output
+    sorted_keys = sorted(list(all_keys))
+
+    for k in sorted_keys:
         vals = [it.get(k) for it in items if k in it]
         if any(isinstance(v, list) for v in vals):
             out[k] = list_union(vals)
@@ -373,6 +399,10 @@ def _deterministic_fuse(items: List[dict]) -> dict:
             out[k] = merged
         else:
             out[k] = keep_scalar(k, vals)
+
+    # Always union source_url to track all original reports
+    out['source_url'] = list_union([it.get('source_url') for it in items])
+
     return out
 
 

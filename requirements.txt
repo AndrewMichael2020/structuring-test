@@ -45,5 +45,6 @@ google-auth-oauthlib
 # git push origin HEAD:main --force
 
 # Run the full batch pipeline from urls.txt:
-# python main.py --urls-file urls.txt --batch-size 4 --assign-event-ids --merge-events --generate-reports
+# python main.py --urls-file urls.txt --batch-size 7 --assign-event-ids --merge-events --generate-reports
 
+# python main.py --assign-event-ids --merge-events --generate-reports --cache-clear

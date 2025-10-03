@@ -12,14 +12,14 @@
     {
       "cluster_id": 1,
       "indices": [
-        3,
-        6
+        2
       ]
     },
     {
       "cluster_id": 2,
       "indices": [
-        2
+        3,
+        6
       ]
     }
   ]
