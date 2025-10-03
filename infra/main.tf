@@ -34,6 +34,12 @@ resource "google_storage_bucket_iam_member" "public_read" {
   member = "allUsers"
 }
 
+resource "google_storage_bucket_iam_member" "run_sa_read" {
+  bucket = google_storage_bucket.reports.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.run_sa.email}"
+}
+
 resource "google_artifact_registry_repository" "repo" {
   location      = var.region
   repository_id = "web-app"
