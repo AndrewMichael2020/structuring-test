@@ -1,12 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ListPage from '../ListPage.jsx';
 
-test('renders title', () => {
+test('renders title and handles async state update', async () => {
   render(
     <MemoryRouter>
       <ListPage />
     </MemoryRouter>
   );
-  expect(screen.getByRole('heading', { name: /Accident Reports/i })).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('heading', { name: /Accident Reports/i })).toBeInTheDocument());
 });
