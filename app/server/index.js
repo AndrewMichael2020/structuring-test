@@ -52,7 +52,64 @@ apiRouter.get('/reports/list', async (_req, res) => {
         const dir = LOCAL_REPORTS_DIR;
         const files = await fs.readdir(dir);
         const ids = files.filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
-        const reports = ids.map(id => ({ id, url: `/reports/${id}` }));
+        const reports = [];
+        for (const id of ids) {
+          try {
+            const raw = await fs.readFile(path.join(dir, id + '.md'), 'utf-8');
+            // Use gray-matter for robust front matter parsing
+            const { data: meta, content } = matter(raw);
+            // Fallback: try to extract H1 as title if title is missing/empty/placeholder
+            let title = (meta.title && meta.title !== 'None') ? String(meta.title).trim() : '';
+            if (/^None\s+—\s+Incident/.test(title)) title = '';
+            if (!title) {
+              const h1 = /^#\s+(.+)$/m.exec(content);
+              if (h1) title = h1[1].trim();
+            }
+            if (!title) {
+              // Derive from first exec summary bullet line maybe
+              const execSummarySection = /## Executive Summary([\s\S]*?)(\n##|$)/i.exec(content);
+              if (execSummarySection) {
+                const bullet = execSummarySection[1].split(/\n/).map(l=>l.trim()).find(l=>l.startsWith('- '));
+                if (bullet) title = bullet.replace(/^-[\s]*/, '').slice(0, 80);
+              }
+            }
+            if (!title) title = id;
+            // Extract region/date/activity with placeholders removed
+            const region = (meta.region && meta.region !== 'None') ? meta.region : '';
+            const date = (meta.date_of_event || meta.date) && (meta.date_of_event !== 'None' && meta.date !== 'None') ? (meta.date_of_event || meta.date) : '';
+            const activity = (meta.activity && meta.activity !== 'None') ? meta.activity : '';
+            // Summary extraction rules:
+            // 1. Use meta.summary if meaningful
+            // 2. Else first bullet under 'Executive Summary'
+            // 3. Else first non-heading, non-script paragraph
+            let summary = (meta.summary && meta.summary !== 'None') ? String(meta.summary).trim() : '';
+            const execSummarySection = /## Executive Summary([\s\S]*?)(\n##|$)/i.exec(content);
+            if (!summary && execSummarySection) {
+              const bullets = execSummarySection[1].split(/\n/).map(l=>l.trim()).filter(l=>l.startsWith('- '));
+              if (bullets.length) summary = bullets[0].replace(/^-[\s]*/, '').trim();
+            }
+            if (!summary) {
+              // Remove script tags entirely
+              const cleaned = content.replace(/<script[\s\S]*?<\/script>/gi, '');
+              const paras = cleaned.split(/\n{2,}/)
+                .map(p => p.trim())
+                .filter(p => p && !p.startsWith('#') && !p.startsWith('<') && !/^[-*]\s/.test(p));
+              if (paras.length) summary = paras[0];
+            }
+            if (summary.length > 240) summary = summary.slice(0, 237) + '...';
+            reports.push({
+              id,
+              url: `/reports/${id}`,
+              title,
+              region,
+              date,
+              activity,
+              summary,
+            });
+          } catch (e) {
+            reports.push({ id, url: `/reports/${id}` });
+          }
+        }
         const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
         if (REPORTS_LIST_MODE === 'array') return res.json(reports);
         return res.json(payloadObject);
