@@ -89,6 +89,8 @@ echo "Granting roles to Cloud Run deploy SA"
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/run.admin" --quiet
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/artifactregistry.writer" --quiet
 gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/iam.serviceAccountUser" --quiet
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/cloudbuild.builds.editor" --quiet
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${CLOUDRUN_SA_EMAIL}" --role="roles/cloudbuild.builds.editor" --quiet
 
 echo "Binding WIF principalSet to SAs (workloadIdentityUser)"
 PRINCIPAL_SET="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_REPO}"
