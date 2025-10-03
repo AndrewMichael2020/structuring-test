@@ -14,7 +14,7 @@ resource "google_project_service" "apis" {
 }
 
 resource "google_storage_bucket" "reports" {
-  name                        = var.bucket_name
+  name                        = "${var.project_id}-report-artifacts"
   location                    = var.region
   force_destroy               = true
   uniform_bucket_level_access = true
@@ -50,18 +50,33 @@ resource "google_cloud_run_v2_service" "frontend" {
   template {
     service_account = google_service_account.run_sa.email
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/web-app/${var.service_name}:latest"
-      env { name = "GCS_BUCKET" value = var.bucket_name }
-      env { name = "NODE_ENV" value = "production" }
+      # Use a public placeholder image for initial creation. The CD pipeline will deploy the real image later.
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
+      env {
+        name  = "GCS_BUCKET"
+        value = google_storage_bucket.reports.name
+      }
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
       resources {
         cpu_idle = true
         limits = { cpu = "1", memory = "512Mi" }
       }
     }
-    scaling { min_instance_count = 0 max_instance_count = 3 }
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 3
+    }
   }
   ingress = "INGRESS_TRAFFIC_ALL"
   depends_on = [google_project_service.apis]
+
+  # Ignore changes to the image, as it will be updated by the CD pipeline.
+  lifecycle {
+    ignore_changes = [template[0].containers[0].image]
+  }
 }
 
 resource "google_cloud_run_service_iam_member" "invoker" {
