@@ -4,12 +4,22 @@ __pycache__/
 .venv/
 *.pyc
 
-# Node / Frontend
+# Node / Frontend (legacy paths)
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/public/api/
 frontend/public/reports/
+
+# Node / Frontend (current app/ paths)
+app/node_modules/
+app/dist/
+app/build/
+app/.vite/
+app/.cache/
+app/coverage/
+app/npm-debug.log*
+app/yarn-*.log
 
 # Local data & artifacts
 artifacts/
@@ -21,6 +31,7 @@ events/reports/
 .env
 .env.*
 config.local.json
+.openai_calls.json
 
 # Logs
 logs/

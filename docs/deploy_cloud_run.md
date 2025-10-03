@@ -1,53 +1,62 @@
 # Deploy Frontend to Google Cloud Run
 
-This guide covers local dev, containerization, CI/CD via GitHub Actions, and provisioning via Terraform.
+This guide covers local dev, containerization, CI/CD via GitHub Actions (OIDC), and provisioning via Terraform for the frontend in `app/`.
 
-## Prereqs
+## Prerequisites
 - GCP project with billing enabled
-- Artifact Registry + Cloud Run APIs enabled (Terraform will enable if using infra here)
-- GitHub repository with these secrets set:
-  - GCP_PROJECT_ID
-  - GCP_WORKLOAD_IDENTITY_PROVIDER (if using Workload Identity Federation)
-  - GCP_SA_EMAIL (service account with permissions to deploy to Cloud Run and push to Artifact Registry)
+- APIs: Artifact Registry, Cloud Run, Cloud Build, IAM, Storage (Terraform can enable these)
+- GitHub repository secrets for OIDC:
+  - `GCP_WORKLOAD_IDP` — Workload Identity Provider resource name
+  - `GCP_CLOUDRUN_SA` — Service Account email to deploy Cloud Run
+  - `GCP_TERRAFORM_SA` — Service Account email for Terraform (if using the infra workflow)
 
 ## Local development
-- Generate static API JSON and run Vite dev server or Express server
-  - From `frontend/`:
-    - `npm install`
-    - `npm run dev` (Vite dev server, UI only)
-    - Alternative: `npm run build && node server.js` (Express serves `dist` and `/api` routes)
+- From `app/`:
+  - `npm ci`
+  - UI only: `npm run dev`
+  - Express + API (after build): `npm run build && GCS_BUCKET=<bucket> npm start`
+  - Offline demo (local markdown): `PORT=8093 DEV_FAKE=0 LOCAL_REPORTS_DIR=../events/reports NODE_ENV=production npm start`
 
-## Docker build (manual)
-- From repo root:
-  - `docker build -t REGION-docker.pkg.dev/PROJECT/REPOSITORY/SERVICE:local ./frontend`
-  - `docker run -e PORT=8080 -p 8080:8080 REGION-docker.pkg.dev/PROJECT/REPOSITORY/SERVICE:local`
-  - Open http://localhost:8080
+## Container build (manual)
+Build and run locally with Docker to mimic Cloud Run:
+
+```bash
+docker build -t REGION-docker.pkg.dev/PROJECT/web-app/accident-reports-frontend:local ./app
+docker run -e PORT=8080 -e NODE_ENV=production -e GCS_BUCKET=accident-reports-artifacts -p 8080:8080 REGION-docker.pkg.dev/PROJECT/web-app/accident-reports-frontend:local
+# open http://localhost:8080/healthz
+```
 
 ## GitHub Actions (CI/CD)
-- Workflow: `.github/workflows/deploy-cloud-run.yml`
-- On push to `main` affecting `frontend/**`, it builds and pushes the image and deploys to Cloud Run.
-- Configure repository secrets:
-  - `GCP_PROJECT_ID`
-  - `GCP_WORKLOAD_IDENTITY_PROVIDER`
-  - `GCP_SA_EMAIL`
+- Workflows:
+  - CI: `.github/workflows/ci.yml` — lint, tests, vite build, schema validate
+  - CD: `.github/workflows/cd.yml` — authenticates with OIDC, builds with Cloud Buildpacks, deploys Cloud Run, smoke test
+  - Terraform: `.github/workflows/tf-plan-apply.yml` — init/plan/apply for infra
+
+Secrets required:
+- `GCP_WORKLOAD_IDP`
+- `GCP_CLOUDRUN_SA`
+- `GCP_TERRAFORM_SA` (for Terraform workflow)
 
 ## Terraform provisioning
-- Files in `infra/terraform/`:
-  - `cloud_run_frontend.tf` creates Artifact Registry and Cloud Run, enables APIs, grants public access
-- Usage:
-  - `cd infra/terraform`
-  - Create `terraform.tfvars` with:
-    - `project_id = "your-project-id"`
-    - `region     = "us-central1"` (or preferred region)
-    - `service_name = "accident-reports-frontend"`
-    - `repository   = "frontend"`
-  - `terraform init`
-  - `terraform apply`
-- Output: `cloud_run_url`
+Infra files in `infra/` provision:
+- Public GCS bucket for artifacts (`bucket_name` var)
+- Artifact Registry repository `web-app`
+- Cloud Run v2 service with public invoker and env vars
+
+Usage:
+```bash
+cd infra
+terraform init
+terraform apply -auto-approve \
+  -var="project_id=YOUR_PROJECT" \
+  -var="region=us-west1" \
+  -var="service_name=accident-reports-frontend" \
+  -var="bucket_name=accident-reports-artifacts"
+```
+
+Outputs:
+- `cloud_run_url` — URL of the deployed service
 
 ## Notes
-- The container listens on `$PORT` (Cloud Run injects this). Default in dev is 5173; in container we use 8080.
-- The Express server serves:
-  - Static `dist` build
-  - Static JSON under `/api` generated at build time
-  - SPA catch-all routing for non-API paths
+- Cloud Run injects `$PORT`; the Express server reads it automatically.
+- The server serves the built SPA (`dist/`), proxies `/api` to GCS (or reads from `LOCAL_REPORTS_DIR`), and provides a health check at `/healthz`.

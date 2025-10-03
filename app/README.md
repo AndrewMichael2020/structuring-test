@@ -1,21 +1,83 @@
-# Accident Reports Frontend
+# Accident Reports Frontend (React + Tailwind + Express)
 
-Display-only React + Tailwind UI, served by Express and deployed to Cloud Run. Artifacts are read from a public GCS bucket.
+Modern, display-only UI for browsing accident reports. The Express server serves the SPA and exposes simple API routes that fetch markdown reports from GCS (or a local directory) and return sanitized HTML.
 
-## Local dev
+## Features
 
-- Node 20+
-- Install deps: `npm ci`
-- Run UI: `npm run dev` (Vite)
-- Run server: `GCS_BUCKET=accident-reports-artifacts npm start` (serves built app)
+- React 18 + Vite + TailwindCSS (with typography plugin)
+- Express server with API routes:
+	- `GET /api/reports/list` → GCS `reports/list.json` or DEV_FAKE sample
+	- `GET /api/reports/:id` → fetch report markdown, strip front matter, convert to sanitized HTML, return `{ id, content_markdown, content_html, meta }`
+- Local file mode: read markdown from `LOCAL_REPORTS_DIR` for offline testing
+- Sanitized HTML via `sanitize-html`; script tags are removed
 
-Build the UI first with `npm run build` to serve static files via Express.
+## Getting started (local)
 
-## Env
+Requirements: Node 20+
 
-- GCS_BUCKET: name of the GCS bucket that contains `reports/list.json` and `reports/<id>.md`.
+1) Install dependencies
 
-## Tests
+```bash
+npm ci
+```
 
-- Lint: `npm run lint`
-- Unit tests: `npm test`
+2) Option A: Vite dev server (UI only)
+
+```bash
+npm run dev
+```
+
+3) Option B: Express server (serves built UI + API)
+
+```bash
+# build UI
+npm run build
+
+# serve with GCS bucket
+GCS_BUCKET=accident-reports-artifacts npm start
+
+# or serve local markdown reports (no GCS needed)
+PORT=8093 DEV_FAKE=0 LOCAL_REPORTS_DIR=../events/reports NODE_ENV=production npm start
+```
+
+Open a report: http://localhost:8093/reports/1976c2189c78
+
+## Environment variables
+
+- `GCS_BUCKET` — bucket containing `reports/list.json` and `reports/<id>.md`
+- `DEV_FAKE` — when `1`, `/api/reports/list` returns a local mock list
+- `LOCAL_REPORTS_DIR` — directory of local `.md` files for `/api/reports/:id`
+- `PORT` — server port (Cloud Run sets this automatically)
+
+## Tests & lint
+
+```bash
+npm run lint
+npm test
+```
+
+Notes:
+- Jest tests include server behavior and HTML sanitization.
+- React Router warnings in tests are expected; they don’t affect pass/fail.
+
+## Build & preview
+
+```bash
+npm run build
+npm run preview
+```
+
+## Deploy
+
+- GitHub Actions CD workflow: `.github/workflows/cd.yml` (Cloud Run deploy via OIDC)
+- Terraform infra: `../infra/` provisions Artifact Registry, Cloud Run, and GCS bucket
+
+At minimum, set GitHub secrets:
+- `GCP_WORKLOAD_IDP`
+- `GCP_CLOUDRUN_SA`
+
+## Troubleshooting
+
+- Warning: `GCS_BUCKET not set` — Either set `GCS_BUCKET` or run in local mode with `LOCAL_REPORTS_DIR`.
+- Report returns 404 — Ensure file exists in GCS (`reports/<id>.md`) or in `LOCAL_REPORTS_DIR`.
+- Scripts showing up in content — The server sanitizes output; ensure you’re using `content_html` from the API, not rendering raw markdown on the client.

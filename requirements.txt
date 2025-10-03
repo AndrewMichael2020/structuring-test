@@ -3,11 +3,14 @@ requests
 beautifulsoup4
 pandas
 
+# Dates
+python-dateutil
+
 # OCR support
 playwright
 pillow
 pytesseract
-pytest 
+pytest
 
 # LLM-based enrichment
 openai

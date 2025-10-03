@@ -1,6 +1,6 @@
-# Structuring Test — news article extractor and accident metadata pipeline
+# Structuring Test — pipeline and frontend for accident reports
 
-This project aims to collect and structure information about underreported, under-analyzed mountain accidents in British Columbia, Alberta, and Washington State. There is no centralized ledger for these incidents; details are scattered across local news, SAR posts, park/advisory bulletins, and social media—and they often disappear behind CDNs, redesigns, or paywalls. This repository builds a decentralized, auditable pipeline that pulls key facts into a lightweight ledger you can query, verify, and evolve over time.
+This project aims to collect and structure information about underreported, under-analyzed mountain accidents in British Columbia, Alberta, and Washington State. There is no centralized ledger for these incidents; details are scattered across local news, SAR posts, park/advisory bulletins, and social media—and they often disappear behind CDNs, redesigns, or paywalls. This repository builds a decentralized, auditable pipeline that pulls key facts into a lightweight ledger you can query, verify, and evolve over time. It also includes a modern, display-only frontend for browsing individual incident reports.
 
 ## Why this matters (value in practice)
 
@@ -15,6 +15,7 @@ This project aims to collect and structure information about underreported, unde
 
 - Per-URL artifact folders: `artifacts/<domain>/<timestamp>/` with the extracted article text, structured `accident_info.json`, and optionally OCR-enriched image metadata.
 - A canonical CSV: `artifacts/artifacts.csv` rebuilt from all on-disk JSON with stable headers and auto-added count columns.
+- A lightweight web app (React + Tailwind + Express) to browse reports with sanitized HTML rendering and basic metadata display (see `app/`).
 - A batching mode: Feed a list of URLs and get per-URL JSON artifacts in one pass, with minimal artifacts even when some pages are teaser-only.
 
 ## Quickstart
@@ -29,6 +30,19 @@ This project aims to collect and structure information about underreported, unde
   - `python -c "from store_artifacts import force_rebuild_and_upload_artifacts_csv; force_rebuild_and_upload_artifacts_csv()"`
 
 You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> artifacts/artifacts.csv`.
+
+### Frontend quickstart (local)
+
+- Requirements: Node 20+
+- From `app/`:
+  - Install deps: `npm ci`
+  - Option A (UI only): `npm run dev` (Vite dev server)
+  - Option B (Express + API proxy):
+    - Build UI: `npm run build`
+    - Serve + API: `GCS_BUCKET=<your-bucket> npm start`
+  - Local file mode (no GCS): `PORT=8093 DEV_FAKE=0 LOCAL_REPORTS_DIR=../events/reports NODE_ENV=production npm start`
+
+Open a report locally: http://localhost:8093/reports/1976c2189c78
 
 ## What’s inside (architecture)
 
@@ -46,6 +60,12 @@ You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> art
 - `accident_postprocess.py` — Normalization/validation and heuristic confidence scoring.
 - `store_artifacts.py` — Rebuilds `artifacts/artifacts.csv` from on-disk JSON; adds counts and a raw `artifact_json` column; optional Drive upload.
 - `main.py` — CLI. Modes: `all`, `text-only`, `ocr-only`. Batch input via `--urls-file`.
+- `app/` — Frontend web app.
+  - React + Tailwind UI served by Express; SPA with routes for list and individual report pages.
+  - API routes (server):
+    - `GET /api/reports/list` → proxies `gs://<bucket>/reports/list.json` or returns local DEV_FAKE.
+    - `GET /api/reports/:id` → fetches `gs://<bucket>/reports/<id>.md` or reads from `LOCAL_REPORTS_DIR`; converts Markdown → sanitized HTML; returns `{ id, content_markdown, content_html, meta }`.
+  - Security: Server sanitizes HTML using `sanitize-html`; scripts are removed; front matter parsed with `gray-matter`.
 
 ## Flow overview
 
@@ -70,6 +90,11 @@ You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> art
   - `PLAYWRIGHT_STEALTH` — `true/false` stealth mode.
   - `PLAYWRIGHT_NAV_TIMEOUT_MS` — navigation timeout (capped sensibly in code).
   - Drive: set environment as per `drive_storage.py` to enable upload.
+  - Frontend/server:
+    - `GCS_BUCKET` — GCS bucket name hosting `reports/list.json` and `reports/<id>.md`.
+    - `DEV_FAKE` — when `1`, server returns local sample list instead of hitting GCS.
+    - `LOCAL_REPORTS_DIR` — path to local markdown reports for offline mode.
+    - `PORT` — web server port (defaults vary by mode; Cloud Run injects `PORT`).
 
 ## Batching
 
@@ -111,7 +136,8 @@ You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> art
 ## Testing and quality
 
 - The suite exercises batch fallbacks (client missing, cap reached, parse mismatch), LLM wrapper repair path, postprocessing/normalization, CSV rebuild (recursive scan and counts), orchestrator basics, and pre-extract/utilities.
-- Run tests with `pytest`.
+- Backend pipeline: Run tests with `pytest`.
+- Frontend/server: From `app/`, run `npm test` and `npm run lint`. The server tests include HTML sanitization.
 
 ## Roadmap ideas
 
@@ -119,7 +145,16 @@ You’ll see a summary like: `[rebuild] scanned 5 artifacts; wrote 5 rows -> art
 - Cross-source de-duplication and event clustering.
 - Enriched location normalization (gazetteer improvements) and map overlays.
 - Light UI for browsing the ledger and exporting subsets.
+  - Search and filter on the list page; optional table of contents for long reports.
 
 ---
 
 This pipeline aims to help practitioners, reporters, and researchers turn ephemeral news into durable, structured knowledge—safely, transparently, and with minimal operational load.
+
+---
+
+## Deploying the frontend
+
+- GitHub Actions: see `.github/workflows/cd.yml` for Cloud Run deploy using Workload Identity Federation (OIDC). Configure repo secrets `GCP_WORKLOAD_IDP` and `GCP_CLOUDRUN_SA`.
+- Terraform: see `infra/` to provision a public Cloud Run service, Artifact Registry, and a public GCS bucket for report artifacts. Outputs include `cloud_run_url`.
+- Detailed steps: `docs/deploy_cloud_run.md`.
