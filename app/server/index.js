@@ -18,19 +18,17 @@ const BUCKET = process.env.GCS_BUCKET;
 const distDir = path.resolve(__dirname, '..', 'dist');
 app.use(express.static(distDir));
 
-// Defer API routes until after static serving is configured, but before the
-// catch-all. This is a common pattern for SPAs to avoid conflicts where a
-// static file might exist with the same name as an API route.
-const apiRouter = express.Router();
-
-// --- API Routes ---
-
-// Health check endpoint
-apiRouter.get('/healthz', (_req, res) => {
+// Health check endpoint - must be at the root
+app.get('/healthz', (_req, res) => {
   // For a more robust health check, you could verify GCS connectivity here.
   // For now, a simple 'ok' is sufficient.
   res.status(200).send('ok');
 });
+
+// Defer API routes until after static serving is configured, but before the
+// catch-all. This is a common pattern for SPAs to avoid conflicts where a
+// static file might exist with the same name as an API route.
+const apiRouter = express.Router();
 
 apiRouter.get('/reports/list', async (_req, res) => {
   try {

@@ -16,6 +16,7 @@ const config = {
       displayName: 'server',
       testEnvironment: 'node',
       testMatch: ['<rootDir>/server/**/*.test.js'],
+      transform: {}, // Disable Babel transformation for server tests
     },
   ],
 };
