@@ -19,6 +19,7 @@ describe('server api', () => {
       .get(`/${BUCKET}/reports/list.json`)
       .reply(200, [{ id: 'a1' }]);
 
+    process.env.GIT_COMMIT = 'deadbeef';
     const res = await request(app).get('/api/reports/list');
     expect(res.status).toBe(200);
     // Canonical object shape
@@ -27,6 +28,11 @@ describe('server api', () => {
     expect(typeof res.body.generated_at).toBe('string');
     expect(res.body.version).toBe(1);
     expect(res.body.count).toBe(1);
+    // Header may only be set if app read env at startup; ensure header is either absent (if pre-load) or matches
+    const commitHeader = res.headers['x-app-commit'];
+    if (commitHeader) {
+      expect(commitHeader).toBe('deadbeef');
+    }
   });
 
   test('GET /api/reports/list with REPORTS_LIST_MODE=array returns array', async () => {

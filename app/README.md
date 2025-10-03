@@ -59,6 +59,29 @@ Note on `reports/list.json`:
 - `LOCAL_REPORTS_DIR` — directory of local `.md` files for `/api/reports/:id`
 - `PORT` — server port (Cloud Run sets this automatically)
 - `REPORTS_LIST_MODE` — `object` (default) returns `{reports:[],generated_at,version,count}`; set to `array` to return legacy bare array shape for compatibility testing.
+- `DEBUG_API` — when `1`, enables `/api/debug/state` diagnostic endpoint (non-secret fields only) to verify bucket wiring in deployed environments.
+- `GIT_COMMIT` — optional commit SHA injected by CI; exposed via `X-App-Commit` header and `/api/debug/state`.
+- `REPORTS_CACHE_TTL_MS` — in-memory cache duration for manifest (0 = disabled). Small values (1000–5000) reduce GCS fetch frequency.
+
+## Diagnostics & Health
+
+Runtime checks:
+- `/api/reports/list` → Should return object with `reports` (or array in legacy mode). Non-empty after successful publish.
+- `/api/debug/state` (enable with `DEBUG_API=1`) → Returns bucket name, manifest URL, status, reportCount.
+
+Cloud Run post-deploy verification (local dev container example):
+```bash
+python scripts/check_cloud_run_reports.py --base https://<your-cloud-run-host> --expect-min 1
+```
+
+Headers of interest:
+- `X-App-Commit`: Present when `GIT_COMMIT` provided; helps verify fresh revision.
+
+If this script reports zero reports while direct bucket fetch returns items:
+1. Ensure the deployed image includes latest frontend bundle (`ListPage.jsx` accepting object shape).
+2. Confirm `GCS_BUCKET` env var in Cloud Run revision.
+3. Hard refresh browser to bypass cached JS assets.
+4. Inspect `/api/debug/state` (set `DEBUG_API=1`).
 
 ## Tests & lint
 

@@ -15,6 +15,11 @@ const BUCKET = process.env.GCS_BUCKET;
 const DEV_FAKE = (process.env.DEV_FAKE || '0') === '1' || (process.env.DEV_FAKE || '').toLowerCase() === 'true';
 const LOCAL_REPORTS_DIR = process.env.LOCAL_REPORTS_DIR || path.resolve(__dirname, '..', '..', 'events', 'reports');
 const REPORTS_LIST_MODE = (process.env.REPORTS_LIST_MODE || 'object').toLowerCase(); // 'object' | 'array'
+const GIT_COMMIT = process.env.GIT_COMMIT || process.env.COMMIT_SHA || '';
+const REPORTS_CACHE_TTL_MS = parseInt(process.env.REPORTS_CACHE_TTL_MS || '0', 10) || 0;
+
+// Simple in-memory manifest cache
+let _manifestCache = { ts: 0, payload: null };
 import fs from 'fs/promises';
 
 // Health check endpoint - must be at the root. Place before static middleware
@@ -40,6 +45,7 @@ const apiRouter = express.Router();
 
 apiRouter.get('/reports/list', async (_req, res) => {
   try {
+    if (GIT_COMMIT) res.setHeader('X-App-Commit', GIT_COMMIT);
     if (DEV_FAKE) {
       // Return a simple list.json assembled from LOCAL_REPORTS_DIR files
       try {
@@ -57,8 +63,19 @@ apiRouter.get('/reports/list', async (_req, res) => {
       }
     }
     const url = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
+    // Serve from cache if valid
+    if (REPORTS_CACHE_TTL_MS > 0 && _manifestCache.payload && (Date.now() - _manifestCache.ts) < REPORTS_CACHE_TTL_MS) {
+      const cached = _manifestCache.payload;
+      if (!cached.reports?.length) {
+        console.warn('[API /reports/list] cached payload has zero reports');
+      }
+      return res.json(REPORTS_LIST_MODE === 'array' ? cached.reports : cached);
+    }
     try {
-      const r = await axios.get(url);
+  const start = Date.now();
+  const r = await axios.get(url).catch(err => { throw err; });
+  const dur = Date.now() - start;
+  console.log(`[API /reports/list] fetched manifest ${url} status=${r.status} bytes=${typeof r.data === 'string' ? r.data.length : JSON.stringify(r.data).length} in ${dur}ms`);
       // Normalize upstream shape to our canonical choice depending on REPORTS_LIST_MODE
       const data = r.data;
       let reports = [];
@@ -70,8 +87,12 @@ apiRouter.get('/reports/list', async (_req, res) => {
         console.warn('[API /reports/list] Unexpected upstream list.json shape');
       }
       const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
-      if (REPORTS_LIST_MODE === 'array') return res.json(reports);
-      return res.json(payloadObject);
+      if (!reports.length) {
+        console.warn('[API /reports/list] Manifest contained zero reports (check bucket path, build revision, or stale manifest)');
+      }
+  _manifestCache = { ts: Date.now(), payload: payloadObject };
+  if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+  return res.json(payloadObject);
     } catch (fetchErr) {
       // If list.json is not present in the bucket, try a public bucket listing
       // fallback. Many deployments write a `reports/list.json` manifest but
@@ -90,6 +111,7 @@ apiRouter.get('/reports/list', async (_req, res) => {
           const reports = ids.map(id => ({ id, url: `/reports/${id}` }));
           console.warn(`[API /reports/list] list.json missing; returning manifest from public bucket listing (${ids.length} items)`);
           const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length, fallback: 'bucket_listing' };
+          _manifestCache = { ts: Date.now(), payload: payloadObject };
           if (REPORTS_LIST_MODE === 'array') return res.json(reports);
           return res.json(payloadObject);
         } catch (listErr) {
@@ -158,6 +180,35 @@ apiRouter.get('/reports/:id', async (req, res) => {
 });
 
 app.use('/api', apiRouter);
+
+// Debug route (non-secret) to verify deployment wiring; only enabled with DEBUG_API=1
+if ((process.env.DEBUG_API || '0').toLowerCase() in ['1','true','yes']) {
+  app.get('/api/debug/state', async (_req, res) => {
+    const manifestUrl = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
+    let manifestStatus = None;
+    let reportCount = None;
+    try {
+      const r = await axios.get(manifestUrl);
+      manifestStatus = r.status;
+      if (Array.isArray(r.data)) {
+        reportCount = r.data.length;
+      } else if (r.data && Array.isArray(r.data.reports)) {
+        reportCount = r.data.reports.length;
+      }
+    } catch (e) {
+      manifestStatus = e.response?.status || 'ERR';
+    }
+    res.json({
+      bucket: BUCKET,
+      reportCount,
+      manifestUrl,
+      manifestStatus,
+      listMode: REPORTS_LIST_MODE,
+      devFake: DEV_FAKE,
+      timestamp: new Date().toISOString(),
+    });
+  });
+}
 
 // This catch-all route should be last. It serves the main index.html for any
 // request that didn't match an API route, enabling client-side routing.

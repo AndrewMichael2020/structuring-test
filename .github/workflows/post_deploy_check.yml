@@ -1,0 +1,24 @@
+name: Post Deploy Check (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_url:
+        description: 'Cloud Run base URL (e.g. https://accident-reports-frontend-xxxxx.a.run.app)'
+        required: true
+      expect_min:
+        description: 'Minimum expected reports'
+        required: false
+        default: '1'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run cloud run report check
+        run: |
+          python scripts/check_cloud_run_reports.py --base ${{ github.event.inputs.service_url }} --expect-min ${{ github.event.inputs.expect_min }}
