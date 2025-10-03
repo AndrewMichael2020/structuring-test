@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 8080;
 const BUCKET = process.env.GCS_BUCKET;
 const DEV_FAKE = (process.env.DEV_FAKE || '0') === '1' || (process.env.DEV_FAKE || '').toLowerCase() === 'true';
 const LOCAL_REPORTS_DIR = process.env.LOCAL_REPORTS_DIR || path.resolve(__dirname, '..', '..', 'events', 'reports');
+const REPORTS_LIST_MODE = (process.env.REPORTS_LIST_MODE || 'object').toLowerCase(); // 'object' | 'array'
 import fs from 'fs/promises';
 
 // Health check endpoint - must be at the root. Place before static middleware
@@ -45,8 +46,10 @@ apiRouter.get('/reports/list', async (_req, res) => {
         const dir = LOCAL_REPORTS_DIR;
         const files = await fs.readdir(dir);
         const ids = files.filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
-        const list = ids.map(id => ({ id, url: `/reports/${id}` }));
-        return res.json({ reports: list });
+        const reports = ids.map(id => ({ id, url: `/reports/${id}` }));
+        const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
+        if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+        return res.json(payloadObject);
       } catch (err) {
         const msg = `DEV_FAKE enabled but LOCAL_REPORTS_DIR read failed: ${err}`;
         console.error(`[API /reports/list] Error: ${msg}`);
@@ -56,7 +59,19 @@ apiRouter.get('/reports/list', async (_req, res) => {
     const url = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
     try {
       const r = await axios.get(url);
-      return res.json(r.data);
+      // Normalize upstream shape to our canonical choice depending on REPORTS_LIST_MODE
+      const data = r.data;
+      let reports = [];
+      if (Array.isArray(data)) {
+        reports = data;
+      } else if (data && Array.isArray(data.reports)) {
+        reports = data.reports;
+      } else {
+        console.warn('[API /reports/list] Unexpected upstream list.json shape');
+      }
+      const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
+      if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+      return res.json(payloadObject);
     } catch (fetchErr) {
       // If list.json is not present in the bucket, try a public bucket listing
       // fallback. Many deployments write a `reports/list.json` manifest but
@@ -72,9 +87,11 @@ apiRouter.get('/reports/list', async (_req, res) => {
           const keys = Array.from(xml.matchAll(/<Key>(.*?)<\/Key>/g)).map(m => m[1]);
           const ids = keys.filter(k => k.startsWith('reports/') && k.endsWith('.md'))
             .map(k => path.basename(k, '.md'));
-          const list = ids.map(id => ({ id, url: `/reports/${id}` }));
+          const reports = ids.map(id => ({ id, url: `/reports/${id}` }));
           console.warn(`[API /reports/list] list.json missing; returning manifest from public bucket listing (${ids.length} items)`);
-          return res.json({ reports: list });
+          const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length, fallback: 'bucket_listing' };
+          if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+          return res.json(payloadObject);
         } catch (listErr) {
           const errorMessage = `list.json not found in bucket: ${BUCKET}`;
           console.error(`[API /reports/list] Error: ${errorMessage} (and public listing fallback failed: ${listErr})`);

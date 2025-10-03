@@ -58,6 +58,7 @@ Note on `reports/list.json`:
 - `DEV_FAKE` — when `1`, `/api/reports/list` returns a local mock list
 - `LOCAL_REPORTS_DIR` — directory of local `.md` files for `/api/reports/:id`
 - `PORT` — server port (Cloud Run sets this automatically)
+- `REPORTS_LIST_MODE` — `object` (default) returns `{reports:[],generated_at,version,count}`; set to `array` to return legacy bare array shape for compatibility testing.
 
 ## Tests & lint
 
