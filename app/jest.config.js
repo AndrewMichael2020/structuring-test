@@ -1,11 +1,23 @@
-export default {
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.js'],
-  moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
-  },
-  transform: {
-    '^.+\\.(js|jsx)$': 'babel-jest'
-  }
+/** @type {import('jest').Config} */
+const config = {
+  projects: [
+    // Frontend tests (React)
+    {
+      displayName: 'client',
+      testEnvironment: 'jest-environment-jsdom',
+      testMatch: ['<rootDir>/src/**/*.test.jsx'],
+      setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.js'],
+      moduleNameMapper: {
+        '\\.(css|less)$': 'identity-obj-proxy',
+      },
+    },
+    // Backend tests (Express)
+    {
+      displayName: 'server',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/server/**/*.test.js'],
+    },
+  ],
 };
-  
+
+module.exports = config;
