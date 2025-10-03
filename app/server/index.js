@@ -110,8 +110,11 @@ apiRouter.get('/reports/list', async (_req, res) => {
             reports.push({ id, url: `/reports/${id}` });
           }
         }
-        const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
-        if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+        // Filter out any unexpected ids (defensive) - only hex-like ids 6+ chars
+        const validRe = /^[a-f0-9]{6,}$/i;
+        const filteredReports = reports.filter(r => validRe.test(r.id));
+        const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
+        if (REPORTS_LIST_MODE === 'array') return res.json(filteredReports);
         return res.json(payloadObject);
       } catch (err) {
         const msg = `DEV_FAKE enabled but LOCAL_REPORTS_DIR read failed: ${err}`;
@@ -143,12 +146,15 @@ apiRouter.get('/reports/list', async (_req, res) => {
       } else {
         console.warn('[API /reports/list] Unexpected upstream list.json shape');
       }
-      const payloadObject = { reports, generated_at: new Date().toISOString(), version: 1, count: reports.length };
+      // Defensive filtering of bad ids (e.g., list.json mistakenly included upstream)
+      const validRe = /^[a-f0-9]{6,}$/i;
+      const filteredReports = reports.filter(r => validRe.test(r.id));
+      const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
       if (!reports.length) {
         console.warn('[API /reports/list] Manifest contained zero reports (check bucket path, build revision, or stale manifest)');
       }
   _manifestCache = { ts: Date.now(), payload: payloadObject };
-  if (REPORTS_LIST_MODE === 'array') return res.json(reports);
+  if (REPORTS_LIST_MODE === 'array') return res.json(filteredReports);
   return res.json(payloadObject);
     } catch (fetchErr) {
       // If list.json is not present in the bucket, try a public bucket listing
@@ -195,6 +201,10 @@ apiRouter.get('/reports/list', async (_req, res) => {
 apiRouter.get('/reports/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // Reject obviously invalid ids to avoid treating manifest files as reports
+    if (id.includes('.') || !/^[a-z0-9]{4,}$/i.test(id)) {
+      return res.status(404).json({ error: 'not_found', message: 'invalid report id' });
+    }
     if (DEV_FAKE) {
       // Read local markdown from LOCAL_REPORTS_DIR
       try {
