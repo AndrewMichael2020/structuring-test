@@ -80,4 +80,29 @@ describe('server api', () => {
     expect(res.body.content_html).toContain('<h1>');
     expect(res.body.content_html).toMatch(/Some text\.?/);
   });
+
+  test('handles list with null and invalid entries gracefully', async () => {
+    // Simulate a list.json with null values, missing IDs, and invalid IDs
+    nock('https://storage.googleapis.com')
+      .get(`/${BUCKET}/reports/list.json`)
+      .reply(200, [
+        { id: 'abc123def456' },  // valid
+        null,                     // null entry
+        { id: null },             // null id
+        { id: '' },               // empty string id
+        { id: 'invalid' },        // too short
+        { id: 'xyznothex' },      // not hex
+        {},                       // missing id
+        { id: 'fedcba987654' },  // valid
+      ]);
+
+    const res = await request(app).get('/api/reports/list');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.reports)).toBe(true);
+    // Should only have 2 valid reports
+    expect(res.body.count).toBe(2);
+    expect(res.body.reports).toHaveLength(2);
+    expect(res.body.reports[0].id).toBe('abc123def456');
+    expect(res.body.reports[1].id).toBe('fedcba987654');
+  });
 });

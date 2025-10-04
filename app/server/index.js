@@ -112,7 +112,7 @@ apiRouter.get('/reports/list', async (_req, res) => {
         }
         // Filter out any unexpected ids (defensive) - only hex-like ids 6+ chars
         const validRe = /^[a-f0-9]{6,}$/i;
-        const filteredReports = reports.filter(r => validRe.test(r.id));
+        const filteredReports = reports.filter(r => r && r.id && validRe.test(r.id));
         const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
         if (REPORTS_LIST_MODE === 'array') return res.json(filteredReports);
         return res.json(payloadObject);
@@ -148,7 +148,7 @@ apiRouter.get('/reports/list', async (_req, res) => {
       }
       // Defensive filtering of bad ids (e.g., list.json mistakenly included upstream)
       const validRe = /^[a-f0-9]{6,}$/i;
-      const filteredReports = reports.filter(r => validRe.test(r.id));
+      const filteredReports = reports.filter(r => r && r.id && validRe.test(r.id));
       const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
       if (!reports.length) {
         console.warn('[API /reports/list] Manifest contained zero reports (check bucket path, build revision, or stale manifest)');
