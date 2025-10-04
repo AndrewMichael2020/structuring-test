@@ -58,13 +58,8 @@ def scan_reports():
         try:
             fm = frontmatter.load(p)
             meta = fm.metadata or {}
-            date_val = meta.get('date', '') or ''
-            # normalize date objects to ISO strings
-            try:
-                if hasattr(date_val, 'isoformat'):
-                    date_val = date_val.isoformat()
-            except Exception:
-                pass
+            # We intentionally do not include date in the manifest items
+            # for the list page; skip normalization.
             # Try to extract Peak/Area and Activity/Style from frontmatter;
             # if missing, attempt a simple body parse for lines like:
             # - "Peak/Area: Mount Himlung" or "Peak/Area: <value>"
@@ -77,34 +72,51 @@ def scan_reports():
                     line = line.strip()
                     if not line:
                         continue
+                    # strip common list markers like '- ' or '* '
+                    if line.startswith('- ') or line.startswith('* '):
+                        line = line[2:].strip()
                     if line.lower().startswith('peak/area:') or line.lower().startswith('peak/area -'):
                         m = line.split(':', 1)[-1].strip() if ':' in line else line.split('-', 1)[-1].strip()
                         break
                 if m:
                     peak = m
 
-            activity = meta.get('activity') or meta.get('audience') or ''
-            if not activity:
-                # Look for 'Activity/Style:' in the body
-                m2 = None
-                for line in body.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if line.lower().startswith('activity/style:') or line.lower().startswith('activity/style -'):
-                        m2 = line.split(':', 1)[-1].strip() if ':' in line else line.split('-', 1)[-1].strip()
-                        break
-                if m2:
-                    activity = m2
+            # Prefer the explicit 'Activity/Style:' line in the body when present
+            activity = ''
+            m2 = None
+            for line in body.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                # strip common list markers like '- ' or '* '
+                if line.startswith('- ') or line.startswith('* '):
+                    line = line[2:].strip()
+                if line.lower().startswith('activity/style:') or line.lower().startswith('activity/style -'):
+                    m2 = line.split(':', 1)[-1].strip() if ':' in line else line.split('-', 1)[-1].strip()
+                    break
+            if m2:
+                activity = m2
+            else:
+                activity = meta.get('activity') or meta.get('audience') or ''
+
+            # Build minimal item used by the frontend list page. Include the
+            # full Peak/Area and Activity/Style text (prefer body lines), the
+            # frontmatter `date_of_event` if present, and the title. Exclude
+            # region and summary as requested.
+            # Normalize date_of_event to an ISO string if needed
+            date_of_event_val = meta.get('date_of_event') or meta.get('date') or ''
+            try:
+                if hasattr(date_of_event_val, 'isoformat'):
+                    date_of_event_val = date_of_event_val.isoformat()
+            except Exception:
+                date_of_event_val = str(date_of_event_val)
 
             item = {
                 'id': p.stem,
-                'date': str(date_val),
-                'region': meta.get('region', '') or '',
-                'activity': activity,
-                'peak': peak,
                 'title': meta.get('title') or '',
-                'summary': meta.get('description') or '',
+                'peak': peak,
+                'date_of_event': str(date_of_event_val) if date_of_event_val is not None else '',
+                'activity': activity,
             }
             out.append(item)
         except Exception:
