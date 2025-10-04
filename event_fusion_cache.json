@@ -1,1 +1,357 @@
-{}
+{
+  "1d5c80e828a6be5cc92d6feca00719ff": {
+    "schema_version": "1.0",
+    "event_id": "e7cfb09ccecd",
+    "headline": "Balin Miller, 23, dies in rappelling accident on El Capitan’s Sea of Dreams",
+    "accident_date": "2025-10-01",
+    "accident_time_approx": "around 1 p.m.",
+    "location": {
+      "region": "Yosemite National Park, California",
+      "park": "Yosemite National Park",
+      "state": "California",
+      "country": "USA",
+      "mountain_name": "El Capitan",
+      "feature": "El Capitan",
+      "coordinates": null
+    },
+    "route": {
+      "name": "Sea of Dreams",
+      "aliases": [
+        "Sea of Dreams (5.9 A4)"
+      ],
+      "grade_systems": [
+        "YDS",
+        "Aid"
+      ],
+      "grades": [
+        "5.9",
+        "A4"
+      ],
+      "confidence_score": 0.98
+    },
+    "activity_type": "rock climbing",
+    "style": "solo aid (rope-solo)",
+    "accident_type": "rappelling accident",
+    "accident_type_detailed": "Rappelled off rope ends while descending the lead line to free a stuck haul bag shortly after completing the final pitch.",
+    "is_livestreamed": true,
+    "livestream_platforms": [
+      "TikTok"
+    ],
+    "viewers_count_approx": 500,
+    "parties": {
+      "num_people_involved": 1,
+      "num_fatalities": 1,
+      "people": [
+        {
+          "name": "Balin Miller",
+          "age": 23,
+          "outcome": "fatality",
+          "hometown_region": "Anchorage, Alaska",
+          "name_variants": [
+            "Balin Miller"
+          ]
+        }
+      ]
+    },
+    "fall_height_meters_estimate": 731.0,
+    "fall_height_feet_estimate": 2400,
+    "accident_location_detail": "Just below the top of El Capitan, after finishing the final pitch of Sea of Dreams.",
+    "accident_summary_text": "After finishing the final pitch of the aid route Sea of Dreams on El Capitan, solo climber Balin Miller descended his lead line to free a stuck haul bag and rappelled off the ends of the rope, resulting in a fatal fall. The incident was observed via a TikTok livestream and by witnesses in El Cap Meadow; a recovery response was initiated.",
+    "timeline": {
+      "text": "Sept. 29: Photographed on Sea of Dreams. Oct. 1 ~10 a.m.: Movement observed near final pitches. ~1 p.m.: Haul bag stuck; descended to free it and rappelled off rope ends; recovery effort initiated.",
+      "events": [
+        {
+          "type": "ASCENT",
+          "ts_iso": "2025-10-01T10:00:00",
+          "approx_time": true,
+          "actor": "Balin Miller",
+          "description": "Observed moving near the final pitches of Sea of Dreams."
+        },
+        {
+          "type": "DECISION_DESCENT",
+          "ts_iso": "2025-10-01T13:00:00",
+          "approx_time": true,
+          "actor": "Balin Miller",
+          "description": "Haul bag became stuck; decided to descend the lead line to free it."
+        },
+        {
+          "type": "RAPPEL",
+          "ts_iso": "2025-10-01T13:05:00",
+          "approx_time": true,
+          "actor": "Balin Miller",
+          "description": "Rappelled down the lead line toward the stuck haul bag."
+        },
+        {
+          "type": "FALL",
+          "ts_iso": "2025-10-01T13:06:00",
+          "approx_time": true,
+          "actor": "Balin Miller",
+          "description": "Rappelled off the ends of the rope and fell from high on El Capitan."
+        },
+        {
+          "type": "SAR_DEPLOYMENT",
+          "ts_iso": "2025-10-01T13:15:00",
+          "approx_time": true,
+          "actor": "Witnesses",
+          "description": "911 called; recovery effort initiated."
+        }
+      ]
+    },
+    "accident_causes": {
+      "proximate_causes": [
+        "rope_system_failure"
+      ],
+      "rope_system": {
+        "num_people_on_rope": 1,
+        "roped_for_descent": true,
+        "roped_for_ascent": false,
+        "protection_in_place": false,
+        "rope_type": "unknown",
+        "belay_method": "rappel",
+        "failure_description": "Rappelled off the ends of the rope",
+        "knots_used": [
+          "unknown"
+        ],
+        "rope_length_insufficient_for_target": true
+      },
+      "decision_factors": {
+        "objective_hazard_awareness": "unknown",
+        "time_pressure": false,
+        "group_dynamics": "independent",
+        "experience_level_est": "advanced",
+        "weather_forecast_considered": false,
+        "alternate_plan_available": false
+      },
+      "cause_classification": {
+        "primary_cause_category": "human_factor",
+        "narrative_summary": "While descending his lead line to free a stuck haul bag after finishing the last pitch, the climber rappelled past the rope ends, causing a fatal fall."
+      }
+    },
+    "self_rescue_boolean": false,
+    "anchor_failure_boolean": false,
+    "response": {
+      "agencies": [
+        "Yosemite National Park Rangers",
+        "National Park Service Rangers"
+      ],
+      "actions": [
+        "911 called",
+        "Recovery effort initiated",
+        "Rangers responded on scene"
+      ],
+      "remains_recovered": null
+    },
+    "witnesses": [
+      {
+        "name": "Eric",
+        "role": "Livestreamer and sole on-the-ground witness in El Cap Meadow",
+        "notes": "Last name withheld; provided account to Climbing."
+      },
+      {
+        "name": "Tom Evans",
+        "role": "Yosemite photographer (El Cap Report); observed incident",
+        "notes": "Publicly described rope not reaching bag location; account cited by multiple outlets."
+      }
+    ],
+    "quoted_dialogue": [
+      "It is with a heavy heart I have to tell you my incredible son Balin Miller died during a climbing accident today. My heart is shattered in a million pieces.",
+      "I was the sole witness down in El Cap Meadow monitoring Balin when he fell.",
+      "We were all cheering for him and wanted to see him summit.",
+      "His rope didn’t reach the bag’s location by many feet, but he seemed unaware of that fact.",
+      "On the way down he rappelled off the end of the rope.",
+      "He wasn’t ready to die. But he did die doing what he loved, for sure.",
+      "At this time, we do not yet know all the details. What we do know is that the world has lost an extraordinary soul, and our hearts are shattered."
+    ],
+    "context_notes": [
+      "Multiple outlets report the incident was captured on a TikTok livestream.",
+      "First day of U.S. federal government shutdown; parks remained generally open with limited services."
+    ],
+    "data_quality": {
+      "overall_confidence": 0.9,
+      "notes": [
+        "People reported circumstances not yet confirmed at time of publication; however, consistent witness accounts (Eric, Tom Evans) described a rappel off rope ends while descending for a stuck haul bag.",
+        "Fall height reported as ~730 m (Gripped) and ~2400 ft (Climbing), which are consistent.",
+        "Precise recovery details not confirmed at time of reports."
+      ]
+    },
+    "provenance": {
+      "accident_date": [
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/",
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://alaskapublic.org/news/2025-10-03/alaska-climber-balin-miller-dies-during-el-capitan-summit",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692",
+        "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl",
+        "https://www.telegraph.co.uk/us/news/2025/10/03/climber-fall-death-cliff-yosemite-park/"
+      ],
+      "accident_time_approx": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/"
+      ],
+      "location.mountain_name": [
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/",
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://alaskapublic.org/news/2025-10-03/alaska-climber-balin-miller-dies-during-el-capitan-summit",
+        "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl",
+        "https://www.telegraph.co.uk/us/news/2025/10/03/climber-fall-death-cliff-yosemite-park/",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692"
+      ],
+      "route.name": [
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/",
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://alaskapublic.org/news/2025-10-03/alaska-climber-balin-miller-dies-during-el-capitan-summit",
+        "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl"
+      ],
+      "route.grades": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/"
+      ],
+      "is_livestreamed": [
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/",
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692",
+        "https://www.telegraph.co.uk/us/news/2025/10/03/climber-fall-death-cliff-yosemite-park/"
+      ],
+      "viewers_count_approx": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/"
+      ],
+      "accident_type_detailed": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://alaskapublic.org/news/2025-10-03/alaska-climber-balin-miller-dies-during-el-capitan-summit",
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/"
+      ],
+      "fall_height_meters_estimate": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/"
+      ],
+      "accident_summary_text": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/"
+      ],
+      "timeline.events": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/"
+      ],
+      "accident_causes.rope_system.failure_description": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/"
+      ],
+      "accident_causes.rope_system.rope_length_insufficient_for_target": [
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan"
+      ],
+      "response.agencies": [
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692"
+      ],
+      "witnesses": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan"
+      ],
+      "context_notes": [
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692",
+        "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl",
+        "https://www.telegraph.co.uk/us/news/2025/10/03/climber-fall-death-cliff-yosemite-park/"
+      ],
+      "quoted_dialogue": [
+        "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692",
+        "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl"
+      ]
+    },
+    "sources": [
+      {
+        "source_name": "Gripped",
+        "source_url": "https://gripped.com/news/alpinist-balin-miller-dies-in-a-rappel-accident-in-yosemite/",
+        "article_title": "Alpinist Balin Miller Dies in a Rappel Accident in Yosemite",
+        "article_date_published": "2025-10-01",
+        "report_author": "Gripped Magazine",
+        "extracted_at": [
+          "2025-10-03T21:40:31-07:00"
+        ],
+        "extraction_confidence_score": 0.9
+      },
+      {
+        "source_name": "Climbing",
+        "source_url": "https://www.climbing.com/news/alpinist-balin-miller-dies-in-yosemite/",
+        "article_title": "Bold Young Alpinist Balin Miller Dies in Yosemite",
+        "article_date_published": "2025-10-01",
+        "report_author": "Maya Silver",
+        "extracted_at": [
+          "2025-10-03T21:40:30-07:00"
+        ],
+        "extraction_confidence_score": 0.86
+      },
+      {
+        "source_name": "Los Angeles Times",
+        "source_url": "https://www.latimes.com/california/story/2025-10-02/popular-climber-falls-to-his-death-on-yosemites-el-capitan",
+        "article_title": "Admired climber dies in fall from Yosemite’s El Capitan during apparent livestream",
+        "article_date_published": "2025-10-02",
+        "report_author": "Jack Dolan",
+        "extracted_at": [
+          "2025-10-03T21:40:30-07:00"
+        ],
+        "extraction_confidence_score": 0.84
+      },
+      {
+        "source_name": "Alaska Public Media",
+        "source_url": "https://alaskapublic.org/news/2025-10-03/alaska-climber-balin-miller-dies-during-el-capitan-summit",
+        "article_title": "Alaska climber Balin Miller dies during El Capitan summit",
+        "article_date_published": "2025-10-03",
+        "report_author": "Wesley Early",
+        "extracted_at": [
+          "2025-10-03T21:40:31-07:00"
+        ],
+        "extraction_confidence_score": 0.76
+      },
+      {
+        "source_name": "People",
+        "source_url": "https://people.com/climbing-star-falls-death-summiting-yosemite-el-capitan-11823692",
+        "article_title": "23-Year-Old Alaskan Climbing Star Falls to His Death While Summiting Yosemite’s El Capitan",
+        "article_date_published": "2025-10-03",
+        "report_author": "Latoya Gayle",
+        "extracted_at": [
+          "2025-10-03T21:40:30-07:00"
+        ],
+        "extraction_confidence_score": 0.7
+      },
+      {
+        "source_name": "CNN",
+        "source_url": "https://www.cnn.com/2025/10/03/sport/climbing-balin-miller-death-intl",
+        "article_title": "American climber Balin Miller dies aged 23 while climbing El Capitan",
+        "article_date_published": "2025-10-03",
+        "report_author": "George Ramsay",
+        "extracted_at": [
+          "2025-10-03T21:40:31-07:00"
+        ],
+        "extraction_confidence_score": 0.62
+      },
+      {
+        "source_name": "The Telegraph",
+        "source_url": "https://www.telegraph.co.uk/us/news/2025/10/03/climber-fall-death-cliff-yosemite-park/",
+        "article_title": "Climber livestreamed moment he fell to his death from Yosemite cliff",
+        "article_date_published": "2025-10-03",
+        "report_author": "Our Foreign Staff",
+        "extracted_at": [
+          "2025-10-03T21:40:31-07:00"
+        ],
+        "extraction_confidence_score": 0.58
+      },
+      {
+        "source_name": "CBC News",
+        "source_url": "https://www.cbc.ca/news/world/yosemite-climbing-death-miller-1.7650097",
+        "article_title": null,
+        "article_date_published": "2025-10-03",
+        "report_author": "CBC",
+        "extracted_at": [
+          "2025-10-03T21:40:29-07:00"
+        ],
+        "extraction_confidence_score": 0.05
+      }
+    ],
+    "last_fused_at": "2025-10-04T00:00:00Z"
+  }
+}

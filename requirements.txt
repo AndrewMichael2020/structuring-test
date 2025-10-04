@@ -2,6 +2,7 @@
 requests
 beautifulsoup4
 pandas
+python-frontmatter
 
 # Dates
 python-dateutil
@@ -57,10 +58,10 @@ google-auth-oauthlib
 # ("--event-id 2bc55...ea6b1" is option)
 
 # then the list: python3 scripts/build_reports_list.py
-# the uload all: # If you set GCS_BUCKET in .env (or exported), this will use that value.
-# python3 scripts/build_reports_list.py --upload
+# the uload list: # If you set GCS_BUCKET in .env (or exported), this will use that value.
+# Upload list: python3 scripts/build_reports_list.py --upload
 
-# upload: python3 scripts/upload_reports.py --method auto
+# upload reports: python3 scripts/upload_reports.py --method auto
 # python3 scripts/upload_reports.py --method gsutil
 # or write bucket name in CLI: python3 scripts/upload_reports.py --bucket my-bucket-name --method auto
 

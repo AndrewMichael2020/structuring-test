@@ -6,16 +6,79 @@ import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import matter from 'gray-matter';
 
-// Fallback front-matter stripper in case gray-matter fails to detect due to
-// encoding anomalies (e.g., BOM, stray leading whitespace, unusual line endings).
+// ------------ Utility & Parsing Helpers ------------
+// Precompiled regex & constants
+const FRONT_MATTER_BOUNDARY = /^---\n[\s\S]*?\n---\n?/;
+const YAML_KEY_PREFIX = /^(title|date_of_event|event_id|audience|region):/;
+const VALID_MANIFEST_ID_RE = /^[a-f0-9]{6,}$/i; // list.json items
+const VALID_REPORT_ID_RE = /^[a-z0-9]{4,}$/i;   // incoming report ids (broader)
+const EXEC_SUMMARY_SECTION_RE = /## Executive Summary([\s\S]*?)(\n##|$)/i;
+const H1_RE = /^#\s+(.+)$/m;
+
 function stripFrontMatterFallback(raw) {
-  // Normalize leading BOM and carriage returns first
   const cleaned = raw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-  const fmPattern = /^---\n[\s\S]*?\n---\n?/; // minimal YAML front matter block
-  if (fmPattern.test(cleaned)) {
-    return cleaned.replace(fmPattern, '');
+  return FRONT_MATTER_BOUNDARY.test(cleaned) ? cleaned.replace(FRONT_MATTER_BOUNDARY, '') : raw;
+}
+
+function parseMarkdownWithFallback(raw) {
+  let parsed;
+  try {
+    parsed = matter(raw);
+  } catch (_e) {
+    parsed = { content: raw, data: {} };
   }
-  return raw;
+  let { content, data } = parsed;
+  // Heuristic: if original had front matter but gray-matter left keys in place
+  if (/^---/.test(raw) && YAML_KEY_PREFIX.test(content)) {
+    const stripped = stripFrontMatterFallback(raw);
+    if (stripped !== raw) content = stripped;
+  }
+  return { content, data };
+}
+
+function buildTitle(id, meta, content) {
+  let title = (meta.title && meta.title !== 'None') ? String(meta.title).trim() : '';
+  if (/^None\s+—\s+Incident/.test(title)) title = '';
+  if (!title) {
+    const m = H1_RE.exec(content);
+    if (m) title = m[1].trim();
+  }
+  if (!title) {
+    const execSec = EXEC_SUMMARY_SECTION_RE.exec(content);
+    if (execSec) {
+      const bullet = execSec[1].split(/\n/).map(l => l.trim()).find(l => l.startsWith('- '));
+      if (bullet) title = bullet.replace(/^-\s*/, '').slice(0, 80);
+    }
+  }
+  return title || id;
+}
+
+function buildSummary(meta, content) {
+  let summary = (meta.summary && meta.summary !== 'None') ? String(meta.summary).trim() : '';
+  if (!summary) {
+    const execSec = EXEC_SUMMARY_SECTION_RE.exec(content);
+    if (execSec) {
+      const bullets = execSec[1].split(/\n/).map(l => l.trim()).filter(l => l.startsWith('- '));
+      if (bullets.length) summary = bullets[0].replace(/^-\s*/, '').trim();
+    }
+  }
+  if (!summary) {
+    const cleaned = content.replace(/<script[\s\S]*?<\/script>/gi, '');
+    const paras = cleaned.split(/\n{2,}/).map(p => p.trim()).filter(p => p && !p.startsWith('#') && !p.startsWith('<') && !/^[-*]\s/.test(p));
+    if (paras.length) summary = paras[0];
+  }
+  if (summary.length > 240) summary = summary.slice(0, 237) + '...';
+  return summary;
+}
+
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
+  allowedAttributes: { a: ['href', 'name', 'target', 'rel'], img: ['src', 'alt', 'title'] },
+  allowedSchemes: ['http', 'https', 'mailto']
+};
+
+function renderHtml(markdown) {
+  return sanitizeHtml(marked.parse(markdown), sanitizeOptions);
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,8 +93,26 @@ const REPORTS_LIST_MODE = (process.env.REPORTS_LIST_MODE || 'object').toLowerCas
 const GIT_COMMIT = process.env.GIT_COMMIT || process.env.COMMIT_SHA || '';
 const REPORTS_CACHE_TTL_MS = parseInt(process.env.REPORTS_CACHE_TTL_MS || '0', 10) || 0;
 
-// Simple in-memory manifest cache
+// Simple in-memory manifest cache + per-report cache
 let _manifestCache = { ts: 0, payload: null };
+const REPORT_ITEM_CACHE_TTL_MS = parseInt(process.env.REPORT_ITEM_CACHE_TTL_MS || '0', 10) || 0;
+const _reportCache = new Map(); // id -> { ts, data }
+
+function getCachedReport(id) {
+  if (!REPORT_ITEM_CACHE_TTL_MS) return null;
+  const cached = _reportCache.get(id);
+  if (!cached) return null;
+  if (Date.now() - cached.ts > REPORT_ITEM_CACHE_TTL_MS) {
+    _reportCache.delete(id);
+    return null;
+  }
+  return cached.data;
+}
+
+function setCachedReport(id, data) {
+  if (!REPORT_ITEM_CACHE_TTL_MS) return;
+  _reportCache.set(id, { ts: Date.now(), data });
+}
 import fs from 'fs/promises';
 
 // Health check endpoint - must be at the root. Place before static middleware
@@ -62,69 +143,23 @@ apiRouter.get('/reports/list', async (_req, res) => {
       // Return a simple list.json assembled from LOCAL_REPORTS_DIR files
       try {
         const dir = LOCAL_REPORTS_DIR;
-        const files = await fs.readdir(dir);
-        const ids = files.filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
-        const reports = [];
-        for (const id of ids) {
+        const files = (await fs.readdir(dir)).filter(f => f.endsWith('.md'));
+        const reports = await Promise.all(files.map(async f => {
+          const id = f.replace(/\.md$/, '');
           try {
-            const raw = await fs.readFile(path.join(dir, id + '.md'), 'utf-8');
-            // Use gray-matter for robust front matter parsing
-            const { data: meta, content } = matter(raw);
-            // Fallback: try to extract H1 as title if title is missing/empty/placeholder
-            let title = (meta.title && meta.title !== 'None') ? String(meta.title).trim() : '';
-            if (/^None\s+—\s+Incident/.test(title)) title = '';
-            if (!title) {
-              const h1 = /^#\s+(.+)$/m.exec(content);
-              if (h1) title = h1[1].trim();
-            }
-            if (!title) {
-              // Derive from first exec summary bullet line maybe
-              const execSummarySection = /## Executive Summary([\s\S]*?)(\n##|$)/i.exec(content);
-              if (execSummarySection) {
-                const bullet = execSummarySection[1].split(/\n/).map(l=>l.trim()).find(l=>l.startsWith('- '));
-                if (bullet) title = bullet.replace(/^-[\s]*/, '').slice(0, 80);
-              }
-            }
-            if (!title) title = id;
-            // Extract region/date/activity with placeholders removed
+            const raw = await fs.readFile(path.join(dir, f), 'utf-8');
+            const { data: meta, content } = parseMarkdownWithFallback(raw);
+            const title = buildTitle(id, meta, content);
             const region = (meta.region && meta.region !== 'None') ? meta.region : '';
             const date = (meta.date_of_event || meta.date) && (meta.date_of_event !== 'None' && meta.date !== 'None') ? (meta.date_of_event || meta.date) : '';
             const activity = (meta.activity && meta.activity !== 'None') ? meta.activity : '';
-            // Summary extraction rules:
-            // 1. Use meta.summary if meaningful
-            // 2. Else first bullet under 'Executive Summary'
-            // 3. Else first non-heading, non-script paragraph
-            let summary = (meta.summary && meta.summary !== 'None') ? String(meta.summary).trim() : '';
-            const execSummarySection = /## Executive Summary([\s\S]*?)(\n##|$)/i.exec(content);
-            if (!summary && execSummarySection) {
-              const bullets = execSummarySection[1].split(/\n/).map(l=>l.trim()).filter(l=>l.startsWith('- '));
-              if (bullets.length) summary = bullets[0].replace(/^-[\s]*/, '').trim();
-            }
-            if (!summary) {
-              // Remove script tags entirely
-              const cleaned = content.replace(/<script[\s\S]*?<\/script>/gi, '');
-              const paras = cleaned.split(/\n{2,}/)
-                .map(p => p.trim())
-                .filter(p => p && !p.startsWith('#') && !p.startsWith('<') && !/^[-*]\s/.test(p));
-              if (paras.length) summary = paras[0];
-            }
-            if (summary.length > 240) summary = summary.slice(0, 237) + '...';
-            reports.push({
-              id,
-              url: `/reports/${id}`,
-              title,
-              region,
-              date,
-              activity,
-              summary,
-            });
-          } catch (e) {
-            reports.push({ id, url: `/reports/${id}` });
+            const summary = buildSummary(meta, content);
+            return { id, url: `/reports/${id}`, title, region, date, activity, summary };
+          } catch (_e) {
+            return { id, url: `/reports/${id}` };
           }
-        }
-        // Filter out any unexpected ids (defensive) - only hex-like ids 6+ chars
-        const validRe = /^[a-f0-9]{6,}$/i;
-        const filteredReports = reports.filter(r => validRe.test(r.id));
+        }));
+        const filteredReports = reports.filter(r => VALID_MANIFEST_ID_RE.test(r.id));
         const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
         if (REPORTS_LIST_MODE === 'array') return res.json(filteredReports);
         return res.json(payloadObject);
@@ -158,9 +193,8 @@ apiRouter.get('/reports/list', async (_req, res) => {
       } else {
         console.warn('[API /reports/list] Unexpected upstream list.json shape');
       }
-      // Defensive filtering of bad ids (e.g., list.json mistakenly included upstream)
-      const validRe = /^[a-f0-9]{6,}$/i;
-      const filteredReports = reports.filter(r => validRe.test(r.id));
+  // Defensive filtering of bad ids
+  const filteredReports = reports.filter(r => VALID_MANIFEST_ID_RE.test(r.id));
       const payloadObject = { reports: filteredReports, generated_at: new Date().toISOString(), version: 1, count: filteredReports.length };
       if (!reports.length) {
         console.warn('[API /reports/list] Manifest contained zero reports (check bucket path, build revision, or stale manifest)');
@@ -214,30 +248,22 @@ apiRouter.get('/reports/:id', async (req, res) => {
   try {
     const { id } = req.params;
     // Reject obviously invalid ids to avoid treating manifest files as reports
-    if (id.includes('.') || !/^[a-z0-9]{4,}$/i.test(id)) {
+    if (id.includes('.') || !VALID_REPORT_ID_RE.test(id)) {
       return res.status(404).json({ error: 'not_found', message: 'invalid report id' });
+    }
+
+    // Per-report cache (non-DEV_FAKE only)
+    if (!DEV_FAKE) {
+      const cached = getCachedReport(id);
+      if (cached) return res.json(cached);
     }
     if (DEV_FAKE) {
       // Read local markdown from LOCAL_REPORTS_DIR
       try {
         const mdPath = path.join(LOCAL_REPORTS_DIR, `${id}.md`);
         const raw = await fs.readFile(mdPath, 'utf-8');
-        let parsed;
-        try {
-          parsed = matter(raw);
-        } catch (e) {
-          parsed = { content: raw, data: {} };
-        }
-        let { content: md, data: meta } = parsed;
-        if (/^---/.test(raw) && /^(title|date_of_event|event_id|audience|region):/.test(md)) {
-          const stripped = stripFrontMatterFallback(raw);
-          if (stripped !== raw) md = stripped;
-        }
-        const content_html = sanitizeHtml(marked.parse(md), {
-          allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
-          allowedAttributes: { a: ['href', 'name', 'target', 'rel'], img: ['src', 'alt', 'title'] },
-          allowedSchemes: ['http', 'https', 'mailto']
-        });
+        const { content: md, data: meta } = parseMarkdownWithFallback(raw);
+        const content_html = renderHtml(md);
         return res.json({ id, content_markdown: md, content_html, meta });
       } catch (err) {
         const msg = `DEV_FAKE enabled but failed to read ${id}.md from ${LOCAL_REPORTS_DIR}: ${err}`;
@@ -248,26 +274,11 @@ apiRouter.get('/reports/:id', async (req, res) => {
     const mdUrl = `https://storage.googleapis.com/${BUCKET}/reports/${id}.md`;
     const r = await axios.get(mdUrl);
     const raw = typeof r.data === 'string' ? r.data : '';
-    let parsed;
-    try {
-      parsed = matter(raw);
-    } catch (e) {
-      parsed = { content: raw, data: {} };
-    }
-    let { content: md, data: meta } = parsed;
-    if (/^---/.test(raw) && /^(title|date_of_event|event_id|audience|region):/.test(md)) {
-      const stripped = stripFrontMatterFallback(raw);
-      if (stripped !== raw) md = stripped;
-    }
-
-    // Sanitize HTML output
-    const content_html = sanitizeHtml(marked.parse(md), {
-      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
-      allowedAttributes: { a: ['href', 'name', 'target', 'rel'], img: ['src', 'alt', 'title'] },
-      allowedSchemes: ['http', 'https', 'mailto']
-    });
-
-    res.json({ id, content_markdown: md, content_html, meta });
+    const { content: md, data: meta } = parseMarkdownWithFallback(raw);
+    const content_html = renderHtml(md);
+    const responsePayload = { id, content_markdown: md, content_html, meta };
+    setCachedReport(id, responsePayload);
+    res.json(responsePayload);
   } catch (e) {
     const errorMessage = e.response?.status === 404
       ? `Report with id '${req.params.id}' not found in bucket: ${BUCKET}`
@@ -280,7 +291,7 @@ apiRouter.get('/reports/:id', async (req, res) => {
 app.use('/api', apiRouter);
 
 // Debug route (non-secret) to verify deployment wiring; only enabled with DEBUG_API=1
-if ((process.env.DEBUG_API || '0').toLowerCase() in ['1','true','yes']) {
+if (['1','true','yes'].includes((process.env.DEBUG_API || '0').toLowerCase())) {
   app.get('/api/debug/state', async (_req, res) => {
     const manifestUrl = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
     let manifestStatus = null;

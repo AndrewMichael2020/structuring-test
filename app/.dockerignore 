@@ -1,0 +1,21 @@
+# Always exclude local secrets
+.env
+.env.*
+secrets/
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+
+# Large or generated stuff you don't need in the build context
+node_modules/
+dist/
+coverage/
+*.log
+__pycache__/
+*.pyc
+
+# Git metadata (usually auto-added, but keep explicit)
+.git
+.gitignore

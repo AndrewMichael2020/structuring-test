@@ -297,5 +297,117 @@
         21
       ]
     }
+  ],
+  "bb97722026a7dcbd9b599d255ad40e75": [
+    {
+      "cluster_id": 0,
+      "indices": [
+        2,
+        12,
+        13,
+        17,
+        18,
+        23,
+        25,
+        27
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "indices": [
+        7,
+        9,
+        16
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "indices": [
+        15,
+        22,
+        24,
+        26
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "indices": [
+        10,
+        11
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "indices": [
+        4,
+        28
+      ]
+    },
+    {
+      "cluster_id": 5,
+      "indices": [
+        8
+      ]
+    },
+    {
+      "cluster_id": 6,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "cluster_id": 7,
+      "indices": [
+        3
+      ]
+    },
+    {
+      "cluster_id": 8,
+      "indices": [
+        5
+      ]
+    },
+    {
+      "cluster_id": 9,
+      "indices": [
+        6
+      ]
+    },
+    {
+      "cluster_id": 10,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "cluster_id": 11,
+      "indices": [
+        14
+      ]
+    },
+    {
+      "cluster_id": 12,
+      "indices": [
+        19
+      ]
+    },
+    {
+      "cluster_id": 13,
+      "indices": [
+        20
+      ]
+    },
+    {
+      "cluster_id": 14,
+      "indices": [
+        21
+      ]
+    },
+    {
+      "cluster_id": 15,
+      "indices": [
+        29
+      ]
+    }
   ]
 }
