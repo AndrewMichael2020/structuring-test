@@ -67,6 +67,7 @@ google-auth-oauthlib
 # the uload all: # If you set GCS_BUCKET in .env (or exported), this will use that value.
 # python3 scripts/build_reports_list.py --upload
 
+# upload: python3 scripts/upload_reports.py --method auto
 # python3 scripts/upload_reports.py --method gsutil
 # or write bucket name in CLI: python3 scripts/upload_reports.py --bucket my-bucket-name --method auto
 

@@ -14,6 +14,37 @@ import argparse
 import os
 
 import frontmatter
+# Attempt to load a .env file in the project directory so os.getenv sees
+# local keys (e.g., GCS_BUCKET). Prefer python-dotenv if available; otherwise
+# fall back to a minimal manual parser so local development still works.
+try:
+    from dotenv import load_dotenv  # type: ignore
+    # load .env located next to this file, then fall back to working dir
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(dotenv_path=str(env_path), override=False)
+    else:
+        load_dotenv(override=False)
+except Exception:
+    try:
+        env_path = Path(__file__).resolve().parents[1] / '.env'
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as _f:
+                for line in _f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' not in line:
+                        continue
+                    k, v = line.split('=', 1)
+                    k = k.strip()
+                    v = v.strip()
+                    if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                        v = v[1:-1]
+                    if k and not os.getenv(k):
+                        os.environ[k] = v
+    except Exception:
+        pass
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS_DIR = ROOT / 'events' / 'reports'
