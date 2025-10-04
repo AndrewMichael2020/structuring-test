@@ -39,7 +39,10 @@ export default function ReportPage() {
     <SiteLayout>
       <div className="bg-gradient-to-r from-sky-50 to-emerald-50 border-y border-gray-100">
         <Container className="py-8">
-          <div className="text-sm text-gray-500"><Link to="/" className="hover:underline">← Back to list</Link></div>
+          <div className="text-sm text-gray-500 flex items-center gap-4">
+            <Link to="/" className="hover:underline">← Back to list</Link>
+            <Link to="/about" className="hover:underline">About</Link>
+          </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">{apiMeta?.title || meta?.title || `Report ${id}`}</h1>
           <p className="mt-2 text-sm text-gray-500">Event ID: <span className="font-mono">{id}</span></p>
           <div className="mt-3 flex flex-wrap gap-2">

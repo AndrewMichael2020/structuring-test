@@ -17,14 +17,14 @@ describe('server api', () => {
   test('GET /api/reports/list proxies GCS', async () => {
     nock('https://storage.googleapis.com')
       .get(`/${BUCKET}/reports/list.json`)
-      .reply(200, [{ id: 'a1' }]);
+      .reply(200, [{ id: 'a1b2c3' }]);
 
     process.env.GIT_COMMIT = 'deadbeef';
     const res = await request(app).get('/api/reports/list');
     expect(res.status).toBe(200);
     // Canonical object shape
     expect(Array.isArray(res.body.reports)).toBe(true);
-    expect(res.body.reports[0]).toEqual({ id: 'a1' });
+  expect(res.body.reports[0]).toEqual({ id: 'a1b2c3' });
     expect(typeof res.body.generated_at).toBe('string');
     expect(res.body.version).toBe(1);
     expect(res.body.count).toBe(1);
@@ -39,7 +39,7 @@ describe('server api', () => {
     // Simulate upstream list.json shape again
     nock('https://storage.googleapis.com')
       .get(`/${BUCKET}/reports/list.json`)
-      .reply(200, [{ id: 'a2' }]);
+      .reply(200, [{ id: 'a2b2c3' }]);
 
     // Temporarily set env var and re-import server? Instead we'll hit existing app;
     // since REPORTS_LIST_MODE is read at module init, this test documents canonical path only.
@@ -47,17 +47,17 @@ describe('server api', () => {
     // Just assert canonical still works with different payload.
     const res = await request(app).get('/api/reports/list');
     expect(res.status).toBe(200);
-    expect(res.body.reports[0]).toEqual({ id: 'a2' });
+  expect(res.body.reports[0]).toEqual({ id: 'a2b2c3' });
   });
 
   test('GET /api/reports/:id proxies GCS and returns HTML', async () => {
     nock('https://storage.googleapis.com')
-      .get(`/${BUCKET}/reports/abc.md`)
+      .get(`/${BUCKET}/reports/abcd.md`)
       .reply(200, '# Title');
 
-    const res = await request(app).get('/api/reports/abc');
+    const res = await request(app).get('/api/reports/abcd');
     expect(res.status).toBe(200);
-    expect(res.body.id).toBe('abc');
+    expect(res.body.id).toBe('abcd');
     expect(res.body.content_markdown).toBe('# Title');
     expect(typeof res.body.content_html).toBe('string');
     expect(res.body.content_html).toContain('<h1>');
@@ -66,12 +66,12 @@ describe('server api', () => {
   test('sanitizes script tags from HTML output', async () => {
     const md = '# Heading\n\n<script>alert(1)</script>\n\nSome text.';
     nock('https://storage.googleapis.com')
-      .get(`/${BUCKET}/reports/sanitize.md`)
+      .get(`/${BUCKET}/reports/sanitze1.md`)
       .reply(200, md);
 
-    const res = await request(app).get('/api/reports/sanitize');
+    const res = await request(app).get('/api/reports/sanitze1');
     expect(res.status).toBe(200);
-    expect(res.body.id).toBe('sanitize');
+    expect(res.body.id).toBe('sanitze1');
     // raw markdown should include the script string
     expect(res.body.content_markdown).toContain('<script>alert(1)</script>');
     // sanitized HTML must not include any script tags
@@ -79,5 +79,24 @@ describe('server api', () => {
     // but should render other content
     expect(res.body.content_html).toContain('<h1>');
     expect(res.body.content_html).toMatch(/Some text\.?/);
+  });
+
+  test('strips front matter block from markdown content', async () => {
+    const raw = `---\n` +
+      `title: Sample Title\n` +
+      `date_of_event: 2025-01-01\n` +
+      `audience: climbers\n` +
+      `event_id: abc123\n` +
+      `---\n\n# Heading\n\nBody text.`;
+    nock('https://storage.googleapis.com')
+      .get(`/${BUCKET}/reports/abc123.md`)
+      .reply(200, raw);
+
+    const res = await request(app).get('/api/reports/abc123');
+    expect(res.status).toBe(200);
+    // Should not see front matter key lines in returned markdown content
+    expect(res.body.content_markdown).not.toMatch(/^title:/m);
+    expect(res.body.content_markdown).not.toMatch(/^event_id:/m);
+    expect(res.body.content_markdown).toMatch(/# Heading/);
   });
 });

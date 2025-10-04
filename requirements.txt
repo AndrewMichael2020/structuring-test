@@ -36,17 +36,10 @@ google-auth-oauthlib
 
 # python3 -m playwright install
 # python3 -m playwright install-deps
-# python3 -m playwright install
 # python3 -m playwright codegen https://example.com
 
 # python main.py "..."
 
-# python - <<'PY'
-# from store_artifacts import force_rebuild_and_upload_artifacts_csv
-# print('Rebuilding...')
-# force_rebuild_and_upload_artifacts_csv()
-# print('Done')
-# PY
 
 # python main.py --urls-file urls.txt --mode text-only --batch-size 3
 

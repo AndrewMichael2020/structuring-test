@@ -4,9 +4,11 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './styles.css';
 import ListPage from './pages/ListPage.jsx';
 import ReportPage from './pages/ReportPage.jsx';
+import AboutPage from './pages/AboutPage.jsx';
 
 const router = createBrowserRouter([
   { path: '/', element: <ListPage /> },
+  { path: '/about', element: <AboutPage /> },
   { path: '/reports/:id', element: <ReportPage /> }
 ]);
 

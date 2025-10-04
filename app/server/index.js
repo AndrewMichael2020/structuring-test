@@ -6,6 +6,18 @@ import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import matter from 'gray-matter';
 
+// Fallback front-matter stripper in case gray-matter fails to detect due to
+// encoding anomalies (e.g., BOM, stray leading whitespace, unusual line endings).
+function stripFrontMatterFallback(raw) {
+  // Normalize leading BOM and carriage returns first
+  const cleaned = raw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+  const fmPattern = /^---\n[\s\S]*?\n---\n?/; // minimal YAML front matter block
+  if (fmPattern.test(cleaned)) {
+    return cleaned.replace(fmPattern, '');
+  }
+  return raw;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -209,8 +221,18 @@ apiRouter.get('/reports/:id', async (req, res) => {
       // Read local markdown from LOCAL_REPORTS_DIR
       try {
         const mdPath = path.join(LOCAL_REPORTS_DIR, `${id}.md`);
-        const data = await fs.readFile(mdPath, 'utf-8');
-        const { content: md, data: meta } = matter(data);
+        const raw = await fs.readFile(mdPath, 'utf-8');
+        let parsed;
+        try {
+          parsed = matter(raw);
+        } catch (e) {
+          parsed = { content: raw, data: {} };
+        }
+        let { content: md, data: meta } = parsed;
+        if (/^---/.test(raw) && /^(title|date_of_event|event_id|audience|region):/.test(md)) {
+          const stripped = stripFrontMatterFallback(raw);
+          if (stripped !== raw) md = stripped;
+        }
         const content_html = sanitizeHtml(marked.parse(md), {
           allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
           allowedAttributes: { a: ['href', 'name', 'target', 'rel'], img: ['src', 'alt', 'title'] },
@@ -225,9 +247,18 @@ apiRouter.get('/reports/:id', async (req, res) => {
     }
     const mdUrl = `https://storage.googleapis.com/${BUCKET}/reports/${id}.md`;
     const r = await axios.get(mdUrl);
-
-    // Parse front matter and markdown content
-    const { content: md, data: meta } = matter(r.data);
+    const raw = typeof r.data === 'string' ? r.data : '';
+    let parsed;
+    try {
+      parsed = matter(raw);
+    } catch (e) {
+      parsed = { content: raw, data: {} };
+    }
+    let { content: md, data: meta } = parsed;
+    if (/^---/.test(raw) && /^(title|date_of_event|event_id|audience|region):/.test(md)) {
+      const stripped = stripFrontMatterFallback(raw);
+      if (stripped !== raw) md = stripped;
+    }
 
     // Sanitize HTML output
     const content_html = sanitizeHtml(marked.parse(md), {
@@ -252,8 +283,8 @@ app.use('/api', apiRouter);
 if ((process.env.DEBUG_API || '0').toLowerCase() in ['1','true','yes']) {
   app.get('/api/debug/state', async (_req, res) => {
     const manifestUrl = `https://storage.googleapis.com/${BUCKET}/reports/list.json`;
-    let manifestStatus = None;
-    let reportCount = None;
+    let manifestStatus = null;
+    let reportCount = null;
     try {
       const r = await axios.get(manifestUrl);
       manifestStatus = r.status;

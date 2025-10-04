@@ -10,8 +10,9 @@ export default function Header() {
           <span className="font-semibold tracking-tight text-lg">Accident Reports</span>
         </Link>
         <nav className="text-sm text-gray-600 hidden sm:flex gap-6">
-          <a href="https://github.com/AndrewMichael2020/structuring-test" className="hover:text-gray-900">GitHub</a>
           <a href="/" className="hover:text-gray-900">Home</a>
+          <a href="/about" className="hover:text-gray-900">About</a>
+          <a href="https://github.com/AndrewMichael2020/structuring-test" className="hover:text-gray-900" rel="noopener noreferrer">GitHub</a>
         </nav>
       </Container>
     </header>

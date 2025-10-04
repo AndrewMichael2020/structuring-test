@@ -180,45 +180,112 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
                 return v.strip()
         return ''
 
-    # Extract web links (sources)
+    # Extract, normalize, and label web links (sources)
     def extract_links() -> list[str]:
-        links = set()
-        # upstream list
-        for key in ('source_urls','source_url','sources'):
-            v = event.get(key)
-            if isinstance(v, list):
-                for s in v:
-                    if isinstance(s, str) and s.startswith('http'):
-                        links.add(s.strip())
-            elif isinstance(v, str) and v.startswith('http'):
-                links.add(v.strip())
-        # fallback: regex scan article text
+        ordered: list[str] = []
+        seen = set()
+        # 1) Prefer explicit fused ordering if provided
+        primaries = event.get('source_urls') or []
+        if isinstance(primaries, list):
+            for s in primaries:
+                if isinstance(s, str) and s.startswith('http'):
+                    u = s.strip()
+                    if u and u not in seen:
+                        seen.add(u)
+                        ordered.append(u)
+        # 2) Fallback single scalar
+        if isinstance(event.get('source_url'), str):
+            su = event['source_url'].strip()
+            if su.startswith('http') and su not in seen:
+                seen.add(su)
+                ordered.append(su)
+        # 3) Legacy 'sources' array containing raw URLs
+        raw_sources = event.get('sources')
+        if isinstance(raw_sources, list):
+            for s in raw_sources:
+                if isinstance(s, str) and s.startswith('http'):
+                    u = s.strip()
+                    if u not in seen:
+                        seen.add(u)
+                        ordered.append(u)
+        # 4) Regex scrape article text for any missed links (deterministic append order)
+        scraped = []
         for m in re.findall(r'https?://[^\s)]+', article_text):
-            links.add(m.rstrip(').,'))
-        return sorted(links)
+            u = m.rstrip(').,')
+            if u not in seen:
+                seen.add(u)
+                scraped.append(u)
+        ordered.extend(scraped)
+        return ordered
 
     web_links = extract_links()
 
-    # Build a compact sources block for final markdown (explicit ordering)
+    _DOMAIN_LABEL_CACHE: dict[str,str] = {}
+    def domain_label(url: str) -> str:
+        if url in _DOMAIN_LABEL_CACHE:
+            return _DOMAIN_LABEL_CACHE[url]
+        try:
+            from urllib.parse import urlparse as _u
+            d = _u(url).netloc.lower()
+            d = d.replace('www.', '')
+            # Heuristic mapping to human-friendly source names
+            mapping = {
+                'climbing.com': 'Climbing',
+                'gripped.com': 'Gripped',
+                'gripped.com:443': 'Gripped',
+                'rockandice.com': 'Rock and Ice',
+                'mountainproject.com': 'Mountain Project',
+                'outsideonline.com': 'Outside Online',
+                'outsideonline.com:443': 'Outside Online',
+                'nbcnews.com': 'NBC News',
+                'abcnews.go.com': 'ABC News',
+                'globalnews.ca': 'Global News',
+                'mirror.co.uk': 'The Mirror',
+                'people.com': 'People',
+                'seattletimes.com': 'Seattle Times',
+                'squamishchief.com': 'Squamish Chief',
+                'lakelandtoday.ca': 'Lakeland Today',
+                'cochranenow.com': 'CochraneNow',
+                'rmoutlook.com': 'Rocky Mountain Outlook',
+            }
+            label = mapping.get(d, d)
+        except Exception:
+            label = url
+        _DOMAIN_LABEL_CACHE[url] = label
+        return label
+
     def render_sources_block() -> str:
         if not web_links:
-            return ''
+            # Still show agencies if available
+            agencies = []
+            for k in ('response_agencies','rescue_teams_involved','agencies'):
+                v = event.get(k)
+                if isinstance(v, list):
+                    agencies.extend([a for a in v if isinstance(a, str)])
+            if not agencies:
+                return ''
+            seen_ag = set(); dedup_ag = []
+            for a in agencies:
+                if a not in seen_ag:
+                    seen_ag.add(a); dedup_ag.append(a)
+            return '## Sources\nAgencies: ' + '; '.join(dedup_ag) + '\n'
+        # Agencies (optional)
         agencies = []
         for k in ('response_agencies','rescue_teams_involved','agencies'):
             v = event.get(k)
             if isinstance(v, list):
                 agencies.extend([a for a in v if isinstance(a, str)])
-        # Deduplicate agencies preserving order
-        seen = set()
-        dedup_agencies = []
+        seen_ag = set(); dedup_ag = []
         for a in agencies:
-            if a not in seen:
-                seen.add(a)
-                dedup_agencies.append(a)
-        block = ["## Sources", *web_links]
-        if dedup_agencies:
-            block.append("Agencies: " + '; '.join(dedup_agencies))
-        return '\n'.join(block) + '\n'
+            if a not in seen_ag:
+                seen_ag.add(a); dedup_ag.append(a)
+        lines = ['## Sources']
+        for u in web_links:
+            lines.append(f"- {domain_label(u)}: {u}")
+        if dedup_ag:
+            lines.append('Agencies: ' + '; '.join(dedup_ag))
+        lines.append('(All original source URLs listed above; labels inferred from domains.)')
+        return '\n'.join(lines) + '\n'
 
     # Short title generation via lightweight LLM (planner model) for speed
     def generate_short_title() -> str:
@@ -303,10 +370,15 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
     # Append or replace sources section at end for consistent layout
     sources_block = render_sources_block()
     if sources_block:
+        # Replace any existing Sources section (## Sources ... until EOF or next H2) deterministically
+        pattern = re.compile(r"## Sources\n(?:.*?)(?=\n## |\Z)", re.DOTALL)
         if '## Sources' in final_md:
-            # Replace existing block crudely by appending refined block if not present already
-            if sources_block not in final_md:
-                final_md += '\n' + sources_block
+            if pattern.search(final_md):
+                final_md = pattern.sub(sources_block.strip() + '\n', final_md)
+            else:
+                # Fallback: append if pattern failed (unlikely)
+                if sources_block not in final_md:
+                    final_md += '\n' + sources_block
         else:
             final_md += '\n' + sources_block
 
