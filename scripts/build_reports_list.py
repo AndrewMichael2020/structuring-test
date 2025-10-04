@@ -116,6 +116,11 @@ def scan_reports():
                 'title': meta.get('title') or '',
                 'peak': peak,
                 'date_of_event': str(date_of_event_val) if date_of_event_val is not None else '',
+                # Backward compatibility: some deployed frontend bundles may still
+                # look for a 'date' property; mirror date_of_event so they do not
+                # render 'Invalid Date'. Once all environments use date_of_event,
+                # this alias can be removed.
+                'date': str(date_of_event_val) if date_of_event_val is not None else '',
                 'activity': activity,
             }
             out.append(item)
