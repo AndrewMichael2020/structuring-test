@@ -69,8 +69,8 @@ export default function ListPage() {
     <SiteLayout>
       <Container>
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Accident Reports</h1>
-          <p className="text-gray-600 mt-1">Structured analyses of mountain incidents. <a href="/about" className="underline decoration-sky-400/50 hover:decoration-sky-600">About the project</a></p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Mountain Accident Reports for Mountaineers</h1>
+          <p className="text-gray-600 mt-1">Structured analyses of mountain incidents</p>
         </div>
 
         <div className="mb-4 flex items-center gap-3">
