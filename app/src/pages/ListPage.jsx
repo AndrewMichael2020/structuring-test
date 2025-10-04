@@ -96,23 +96,25 @@ export default function ListPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50/80 text-gray-600 uppercase tracking-wide text-xs">
                   <tr>
+                    <th className="text-left p-3 w-36">Event date</th>
                     <th className="text-left p-3">Title</th>
-                    <th className="text-left p-3 w-56">Peak / Area</th>
-                    <th className="text-left p-3 w-44">Region</th>
-                    <th className="text-left p-3 w-44">Activity / Style</th>
+                    <th className="text-left p-3 w-56">Peak / Region</th>
+                    <th className="text-left p-3 w-72">Activity</th>
                     <th className="text-right p-3 w-24">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pageItems.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="p-3 whitespace-nowrap">{fmtDate(r.date_of_event)}</td>
                       <td className="p-3">
-                        <div className="font-medium text-gray-900">{r.title}</div>
+                        <div className="font-medium text-gray-900">
+                          <Link className="text-sky-700 hover:underline" to={`/reports/${r.id}`} state={{ meta: r }}>{r.title}</Link>
+                        </div>
                         {r.summary && <div className="text-gray-500 text-xs mt-1 line-clamp-2">{r.summary}</div>}
                       </td>
                       <td className="p-3 whitespace-nowrap">{r.peak}</td>
-                      <td className="p-3 whitespace-nowrap">{r.region}</td>
-                      <td className="p-3 whitespace-nowrap">{r.activity}</td>
+                      <td className="p-3">{r.activity}</td>
                       <td className="p-3 text-right">
                         <Link className="inline-flex items-center gap-1 text-sky-700 hover:underline" to={`/reports/${r.id}`} state={{ meta: r }}>
                           <span>View</span>
