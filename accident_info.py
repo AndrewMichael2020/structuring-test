@@ -105,7 +105,9 @@ PLAYWRIGHT_STEALTH = os.getenv("PLAYWRIGHT_STEALTH", "true").lower() in (
     "1", "true", "yes"
 )
 
-from accident_utils import _ensure_outdir, _slugify
+from accident_utils import _ensure_outdir, _slugify, parse_publication_date, parse_report_author
+from article_meta import extract_meta_from_html
+from article_meta import extract_meta_from_html
 from accident_preextract import pre_extract_fields
 from accident_postprocess import _postprocess, compute_confidence
 from accident_llm import llm_extract, _OPENAI_AVAILABLE
@@ -249,12 +251,35 @@ def extract_accident_info(
     # traceability; include both the focused article_text and the full scraped
     # text (before trimming). Build payload but ensure the canonical URL passed
     # to the function wins
+    # deterministic publication date / author extraction from full text first, fallback to focused
+    pub_date = parse_publication_date(full_text or text)
+    author = parse_report_author(full_text or text)
+    # Attempt HTML-level metadata extraction if still missing by doing a lightweight refetch (cheap single GET)
+    if (not pub_date or not author):
+        try:
+            import requests
+            r_meta = requests.get(final_url or url, timeout=10, headers={'User-Agent':'Mozilla/5.0 (MetaProbe)'})
+            if r_meta.ok and r_meta.text:
+                author_html, date_html = extract_meta_from_html(r_meta.text)
+                if not author and author_html:
+                    author = author_html
+                if not pub_date and date_html:
+                    pub_date = date_html
+        except Exception:
+            pass
+    if pub_date:
+        info.setdefault('article_date_published', pub_date)
+    if author:
+        info.setdefault('report_author', author)
+
     payload = {
         "extracted_at": now_pst_iso(),
         "article_text": text,
         "scraped_full_text": full_text,
         **info,
-        "source_url": final_url or url  # Use final_url when available
+        "source_url": final_url or url,  # Use final_url when available
+        "report_author": author if author else info.get('report_author'),
+        "article_date_published": info.get('article_date_published'),
     }
 
     json_path = str(out_path / "accident_info.json")
@@ -346,12 +371,33 @@ def batch_extract_accident_info(
             pre_list.append(pre)
         # helper to write a minimal artifact for index idx within this batch
         def _write_minimal(idx: int):
+            # deterministic publication date / author
+            full_or_focus = full_texts[idx] if idx < len(full_texts) and full_texts[idx] else texts[idx]
+            pub_date_det = parse_publication_date(full_or_focus)
+            author_det = parse_report_author(full_or_focus)
             payload_write = {
                 'extracted_at': now_pst_iso(),
                 'article_text': texts[idx],
                 'scraped_full_text': full_texts[idx] if idx < len(full_texts) else '',
                 'pre_extracted': pre_list[idx],
             }
+            # If still missing after deterministic parse, attempt quick HTML fetch for meta tags
+            if (pub_date_det is None or author_det is None):
+                try:
+                    import requests
+                    r_meta = requests.get(final_urls[idx] if idx < len(final_urls) else batch[idx], timeout=8, headers={'User-Agent':'Mozilla/5.0 (MetaProbe)'})
+                    if r_meta.ok and r_meta.text:
+                        a_html, d_html = extract_meta_from_html(r_meta.text)
+                        if author_det is None and a_html:
+                            payload_write['report_author'] = a_html
+                        if pub_date_det is None and d_html:
+                            payload_write['article_date_published'] = d_html
+                except Exception:
+                    pass
+            if pub_date_det:
+                payload_write['article_date_published'] = pub_date_det
+            if author_det:
+                payload_write['report_author'] = author_det
             payload_write['source_url'] = (
                 final_urls[idx] if idx < len(final_urls) and final_urls[idx] else batch[idx]
             )
@@ -518,6 +564,27 @@ def batch_extract_accident_info(
                     info['extraction_confidence_score'] = compute_confidence(pre_list[idx], info)
             except Exception:
                 pass
+            # deterministic augmentation for date/author
+            full_or_focus = full_texts[idx] if idx < len(full_texts) and full_texts[idx] else texts[idx]
+            pub_date_det = parse_publication_date(full_or_focus)
+            author_det = parse_report_author(full_or_focus)
+            if pub_date_det and 'article_date_published' not in info:
+                info['article_date_published'] = pub_date_det
+            if author_det and 'report_author' not in info:
+                info['report_author'] = author_det
+            # If still missing, attempt HTML meta fetch
+            if ('article_date_published' not in info) or ('report_author' not in info):
+                try:
+                    import requests
+                    r_meta = requests.get(final_urls[idx] if idx < len(final_urls) else batch[idx], timeout=8, headers={'User-Agent':'Mozilla/5.0 (MetaProbe)'})
+                    if r_meta.ok and r_meta.text:
+                        a_html, d_html = extract_meta_from_html(r_meta.text)
+                        if 'report_author' not in info and a_html:
+                            info['report_author'] = a_html
+                        if 'article_date_published' not in info and d_html:
+                            info['article_date_published'] = d_html
+                except Exception:
+                    pass
             payload_write = {
                 'extracted_at': now_pst_iso(),
                 'article_text': texts[idx],

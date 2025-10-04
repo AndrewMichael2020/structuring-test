@@ -198,5 +198,104 @@
         20
       ]
     }
+  ],
+  "ab3f6c415e82907d86c86a5b7d8f78da": [
+    {
+      "cluster_id": 0,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "indices": [
+        2
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "indices": [
+        3,
+        20
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "indices": [
+        4
+      ]
+    },
+    {
+      "cluster_id": 5,
+      "indices": [
+        5
+      ]
+    },
+    {
+      "cluster_id": 6,
+      "indices": [
+        6,
+        8,
+        13
+      ]
+    },
+    {
+      "cluster_id": 7,
+      "indices": [
+        7
+      ]
+    },
+    {
+      "cluster_id": 8,
+      "indices": [
+        9,
+        10
+      ]
+    },
+    {
+      "cluster_id": 9,
+      "indices": [
+        11
+      ]
+    },
+    {
+      "cluster_id": 10,
+      "indices": [
+        12,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "cluster_id": 11,
+      "indices": [
+        14
+      ]
+    },
+    {
+      "cluster_id": 12,
+      "indices": [
+        15
+      ]
+    },
+    {
+      "cluster_id": 13,
+      "indices": [
+        16
+      ]
+    },
+    {
+      "cluster_id": 14,
+      "indices": [
+        21
+      ]
+    }
   ]
 }

@@ -112,6 +112,9 @@ Open a report locally: http://localhost:8093/reports/1976c2189c78
   - `source_url`, `extracted_at`, `article_text`, `scraped_full_text`
   - structured fields (people counts, dates, agencies, etc.)
   - an `extraction_confidence_score` (heuristic + optional model signal)
+  - deterministic additions (no extra LLM cost):
+    - `article_date_published` (if a recognizable Published/Updated/Posted date is found early in the article)
+    - `report_author` (author line like "By Jane Doe" within the first ~500 chars)
 - `artifacts/artifacts.csv`:
   - Canonical fields in a stable order plus:
     - `artifact_json` (raw JSON per row)

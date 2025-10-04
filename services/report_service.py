@@ -199,6 +199,27 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
 
     web_links = extract_links()
 
+    # Build a compact sources block for final markdown (explicit ordering)
+    def render_sources_block() -> str:
+        if not web_links:
+            return ''
+        agencies = []
+        for k in ('response_agencies','rescue_teams_involved','agencies'):
+            v = event.get(k)
+            if isinstance(v, list):
+                agencies.extend([a for a in v if isinstance(a, str)])
+        # Deduplicate agencies preserving order
+        seen = set()
+        dedup_agencies = []
+        for a in agencies:
+            if a not in seen:
+                seen.add(a)
+                dedup_agencies.append(a)
+        block = ["## Sources", *web_links]
+        if dedup_agencies:
+            block.append("Agencies: " + '; '.join(dedup_agencies))
+        return '\n'.join(block) + '\n'
+
     # Short title generation via lightweight LLM (planner model) for speed
     def generate_short_title() -> str:
         try:
@@ -279,17 +300,15 @@ def generate_report(eid: str, audience: str = 'climbers', family_sensitive: bool
     final_md = header + "\n" + draft_md
 
     # Insert web links section if not already present
-    if '## Web Links to Sources' not in final_md:
-        if '## Sources' in final_md and web_links:
-            parts = final_md.split('## Sources')
-            if len(parts) >= 2:
-                before, after = parts[0], '## Sources' + parts[1]
-                links_md = '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
-                final_md = before + after + links_md
-            else:
-                final_md += '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
-        elif web_links:
-            final_md += '\n\n## Web Links to Sources\n' + '\n'.join(f"- {u}" for u in web_links) + '\n'
+    # Append or replace sources section at end for consistent layout
+    sources_block = render_sources_block()
+    if sources_block:
+        if '## Sources' in final_md:
+            # Replace existing block crudely by appending refined block if not present already
+            if sources_block not in final_md:
+                final_md += '\n' + sources_block
+        else:
+            final_md += '\n' + sources_block
 
     if dry_run:
         return None

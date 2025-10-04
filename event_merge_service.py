@@ -400,8 +400,32 @@ def _deterministic_fuse(items: List[dict]) -> dict:
         else:
             out[k] = keep_scalar(k, vals)
 
-    # Always union source_url to track all original reports
-    out['source_url'] = list_union([it.get('source_url') for it in items])
+    # Collect original source URLs (each item expected to have a scalar string source_url)
+    raw_urls = []
+    seen_urls = set()
+    for it in items:
+        u = it.get('source_url')
+        if isinstance(u, str):
+            u = u.strip()
+            if u and u not in seen_urls:
+                seen_urls.add(u)
+                raw_urls.append(u)
+        # Some legacy fused items may already store an array; merge those too
+        elif isinstance(u, list):
+            for uu in u:
+                if isinstance(uu, str):
+                    s = uu.strip()
+                    if s and s not in seen_urls:
+                        seen_urls.add(s)
+                        raw_urls.append(s)
+    if raw_urls:
+        out['source_urls'] = raw_urls
+        # Preserve backward compatibility: keep a single scalar source_url (first) if not already meaningful
+        out['source_url'] = out.get('source_url') or raw_urls[0]
+    else:
+        # Ensure fields exist for downstream code expecting them
+        out.setdefault('source_urls', [])
+        out.setdefault('source_url', '')
 
     return out
 

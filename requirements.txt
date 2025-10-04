@@ -63,4 +63,16 @@ google-auth-oauthlib
 # Or just create reports: python services/report_service.py
 # ("--event-id 2bc55...ea6b1" is option)
 
+# then the list: python3 scripts/build_reports_list.py
+# the uload all: # If you set GCS_BUCKET in .env (or exported), this will use that value.
+# python3 scripts/build_reports_list.py --upload
+
+# python3 scripts/upload_reports.py --method gsutil
+# or write bucket name in CLI: python3 scripts/upload_reports.py --bucket my-bucket-name --method auto
+
+# VErify: curl -sS https://storage.googleapis.com/$GCS_BUCKET/reports/list.json | jq .
+# verify reports: gsutil ls gs://$GCS_BUCKET/reports/
+
+
+
 # Test-deploy from workspace: gcloud run deploy accident-reports-frontend --source ./app --region us-west1 --platform managed --allow-unauthenticated --set-env-vars GCS_BUCKET=accident-reports-artifacts,NODE_ENV=production,OPENAI_API_KEY=${OPENAI_API_KEY} --quiet
