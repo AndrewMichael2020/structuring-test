@@ -65,11 +65,44 @@ def scan_reports():
                     date_val = date_val.isoformat()
             except Exception:
                 pass
+            # Try to extract Peak/Area and Activity/Style from frontmatter;
+            # if missing, attempt a simple body parse for lines like:
+            # - "Peak/Area: Mount Himlung" or "Peak/Area: <value>"
+            body = fm.content or ''
+            peak = meta.get('peak') or ''
+            if not peak:
+                # Look for lines like 'Peak/Area: ...' or 'Peak/Area - ...'
+                m = None
+                for line in body.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.lower().startswith('peak/area:') or line.lower().startswith('peak/area -'):
+                        m = line.split(':', 1)[-1].strip() if ':' in line else line.split('-', 1)[-1].strip()
+                        break
+                if m:
+                    peak = m
+
+            activity = meta.get('activity') or meta.get('audience') or ''
+            if not activity:
+                # Look for 'Activity/Style:' in the body
+                m2 = None
+                for line in body.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.lower().startswith('activity/style:') or line.lower().startswith('activity/style -'):
+                        m2 = line.split(':', 1)[-1].strip() if ':' in line else line.split('-', 1)[-1].strip()
+                        break
+                if m2:
+                    activity = m2
+
             item = {
                 'id': p.stem,
                 'date': str(date_val),
                 'region': meta.get('region', '') or '',
-                'activity': meta.get('activity') or meta.get('audience', '') or '',
+                'activity': activity,
+                'peak': peak,
                 'title': meta.get('title') or '',
                 'summary': meta.get('description') or '',
             }
