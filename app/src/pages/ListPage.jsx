@@ -95,10 +95,10 @@ export default function ListPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50/80 text-gray-600 uppercase tracking-wide text-xs select-none">
                   <tr>
+                    <th className="text-left p-3 w-40">Event ID</th>
                     <th className="text-left p-3 w-36">Event Date</th>
-                    <th className="text-left p-3 w-36">ID</th>
                     <th className="text-left p-3">Title</th>
-                    <th className="text-left p-3 w-72">Region (Peak/Area)</th>
+                    <th className="text-left p-3 w-72">Peak / Area</th>
                     <th className="text-left p-3 w-80">Activity / Style</th>
                     <th className="text-right p-3 w-28">Action</th>
                   </tr>
@@ -106,8 +106,8 @@ export default function ListPage() {
                 <tbody className="divide-y divide-gray-100">
                   {pageItems.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="p-3 whitespace-nowrap text-xs text-gray-700 max-w-[7rem] truncate" title={r.date_of_event}>{fmtRaw(r.date_of_event)}</td>
-                      <td className="p-3 whitespace-nowrap text-[11px] font-mono text-gray-500 max-w-[7rem] truncate" title={r.id}>{r.id}</td>
+                      <td className="p-3 whitespace-nowrap text-[11px] font-mono text-gray-600 max-w-[9rem] truncate" title={r.id}>{r.id}</td>
+                      <td className="p-3 whitespace-nowrap text-xs text-gray-700 max-w-[7rem] truncate" title={r.date_of_event || r.date}>{fmtRaw(r.date_of_event || r.date)}</td>
                       <td className="p-3 align-top">
                         <div className="font-medium text-gray-900 leading-snug max-w-[22rem] truncate" title={r.title}>
                           <Link className="text-sky-700 hover:underline" to={`/reports/${r.id}`} state={{ meta: r }}>{r.title}</Link>
