@@ -41,11 +41,13 @@ export default function ReportPage() {
         <Container className="py-8">
           <div className="text-sm text-gray-500"><Link to="/" className="hover:underline">← Back to list</Link></div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">{apiMeta?.title || meta?.title || `Report ${id}`}</h1>
+          <p className="mt-2 text-sm text-gray-500">Event ID: <span className="font-mono">{id}</span></p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(apiMeta?.date || meta?.date) && <Badge color="slate">{apiMeta?.date || meta?.date}</Badge>}
-            {(apiMeta?.region || meta?.region) && <Badge color="sky">{apiMeta?.region || meta?.region}</Badge>}
+            {(apiMeta?.date_of_event || meta?.date_of_event || apiMeta?.date || meta?.date) && (
+              <Badge color="slate">{apiMeta?.date_of_event || meta?.date_of_event || apiMeta?.date || meta?.date}</Badge>
+            )}
+            {(apiMeta?.peak || meta?.peak) && <Badge color="sky">{apiMeta?.peak || meta?.peak}</Badge>}
             {(apiMeta?.activity || meta?.activity) && <Badge color="emerald">{apiMeta?.activity || meta?.activity}</Badge>}
-            {!apiMeta && !meta && <Badge color="amber">ID: {id}</Badge>}
           </div>
         </Container>
       </div>

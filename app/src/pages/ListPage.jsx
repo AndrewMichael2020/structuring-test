@@ -46,7 +46,7 @@ export default function ListPage() {
     const q = query.trim().toLowerCase();
     if (!q) return reports;
     return reports.filter((r) => {
-      return [r.title, r.peak, r.region, r.activity, r.summary]
+      return [r.id, r.title, r.date_of_event, r.peak, r.activity, r.summary]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
@@ -58,12 +58,11 @@ export default function ListPage() {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [page, filtered]);
 
-  function fmtDate(d) {
-    try {
-      return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch {
-      return d;
-    }
+  function fmtRaw(d) {
+    if (d === null || d === undefined) return '';
+    const s = String(d).trim();
+    if (!s) return '';
+    return s; // no parsing/formatting; show as-is
   }
 
   return (
@@ -94,30 +93,32 @@ export default function ListPage() {
           ) : (
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50/80 text-gray-600 uppercase tracking-wide text-xs">
+                <thead className="bg-gray-50/80 text-gray-600 uppercase tracking-wide text-xs select-none">
                   <tr>
-                    <th className="text-left p-3 w-36">Event date</th>
+                    <th className="text-left p-3 w-36">Event Date</th>
+                    <th className="text-left p-3 w-36">ID</th>
                     <th className="text-left p-3">Title</th>
-                    <th className="text-left p-3 w-56">Peak / Region</th>
-                    <th className="text-left p-3 w-72">Activity</th>
-                    <th className="text-right p-3 w-24">Action</th>
+                    <th className="text-left p-3 w-72">Region (Peak/Area)</th>
+                    <th className="text-left p-3 w-80">Activity / Style</th>
+                    <th className="text-right p-3 w-28">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pageItems.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="p-3 whitespace-nowrap">{fmtDate(r.date_of_event)}</td>
-                      <td className="p-3">
-                        <div className="font-medium text-gray-900">
+                      <td className="p-3 whitespace-nowrap text-xs text-gray-700 max-w-[7rem] truncate" title={r.date_of_event}>{fmtRaw(r.date_of_event)}</td>
+                      <td className="p-3 whitespace-nowrap text-[11px] font-mono text-gray-500 max-w-[7rem] truncate" title={r.id}>{r.id}</td>
+                      <td className="p-3 align-top">
+                        <div className="font-medium text-gray-900 leading-snug max-w-[22rem] truncate" title={r.title}>
                           <Link className="text-sky-700 hover:underline" to={`/reports/${r.id}`} state={{ meta: r }}>{r.title}</Link>
                         </div>
-                        {r.summary && <div className="text-gray-500 text-xs mt-1 line-clamp-2">{r.summary}</div>}
+                        {r.summary && <div className="text-gray-500 text-xs mt-1 line-clamp-2 max-w-[22rem]" title={r.summary}>{r.summary}</div>}
                       </td>
-                      <td className="p-3 whitespace-nowrap">{r.peak}</td>
-                      <td className="p-3">{r.activity}</td>
-                      <td className="p-3 text-right">
-                        <Link className="inline-flex items-center gap-1 text-sky-700 hover:underline" to={`/reports/${r.id}`} state={{ meta: r }}>
-                          <span>View</span>
+                      <td className="p-3 text-xs text-gray-700 max-w-[18rem] truncate" title={r.peak}>{r.peak}</td>
+                      <td className="p-3 text-xs text-gray-700 max-w-[22rem] truncate" title={r.activity}>{r.activity}</td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <Link className="inline-flex items-center gap-1 text-sky-700 hover:underline text-sm" to={`/reports/${r.id}`} state={{ meta: r }}>
+                          <span>View details</span>
                           <span>→</span>
                         </Link>
                       </td>
