@@ -7,9 +7,9 @@
     "accident_info": "gpt-5",
     "event_cluster": "gpt-5-mini",
     "event_merge": "gpt-5-mini",
-    "event_fusion": "gpt-5",
+    "event_fusion": "gpt-5-mini",
     "report_planner": "gpt-5-mini",
     "report_writer": "gpt-5",
-    "report_verifier": "gpt-5-mini"
+    "report_verifier": "gpt-5" 
   }
 }
